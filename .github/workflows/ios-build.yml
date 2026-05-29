@@ -20,7 +20,7 @@ jobs:
         with:
           targetPlatform: iOS
           unityVersion: 2022.3.34f1
-          buildMethod: ''
+          buildMethod: IOSBuilder.Build
 
       - name: Build unsigned IPA
         run: |
@@ -47,7 +47,6 @@ jobs:
           cp -r build/Unity-iPhone.xcarchive/Products/Applications/*.app Payload/
           zip -r TetrisM_iOS.ipa Payload
           ls -la TetrisM_iOS.ipa
-          # Copy to known location for upload
           mkdir -p "$GITHUB_WORKSPACE/build/iOS"
           cp TetrisM_iOS.ipa "$GITHUB_WORKSPACE/build/iOS/"
 
