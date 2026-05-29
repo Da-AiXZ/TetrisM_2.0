@@ -14,9 +14,7 @@ jobs:
       - name: Build Unity (Xcode project)
         uses: game-ci/unity-builder@v4
         env:
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
         with:
           targetPlatform: iOS
           unityVersion: 2022.3.34f1
@@ -46,3 +44,35 @@ jobs:
           name: TetrisM_iOS
           path: build/iOS/TetrisM_iOS.ipa
           retention-days: 7
+
+  get-alf:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - name: Install Unity Hub
+        run: brew install --cask unity-hub
+
+      - name: Install Unity 2022.3.34f1
+        run: |
+          /Applications/Unity\ Hub.app/Contents/MacOS/Unity\ Hub -- --headless install \
+            --version 2022.3.34f1 \
+            --changeset 1e17368ca73f \
+            --architecture arm64
+        timeout-minutes: 10
+
+      - name: Generate activation file (.alf)
+        run: |
+          /Applications/Unity/Hub/Editor/2022.3.34f1/Unity.app/Contents/MacOS/Unity \
+            -batchmode \
+            -quit \
+            -nographics \
+            -createManualActivationFile \
+            -logFile alf.log
+          ls -la Unity_*.alf
+
+      - name: Upload .alf file
+        uses: actions/upload-artifact@v4
+        with:
+          name: Unity_Activation_File
+          path: Unity_*.alf
+          retention-days: 1
