@@ -24,13 +24,9 @@ jobs:
 
       - name: Build unsigned IPA
         run: |
-          echo "=== Listing build/iOS ==="
-          find build -name '*.xcodeproj' 2>/dev/null || true
-          ls -la build/iOS/ 2>/dev/null || true
           XCODEPROJ=$(find build -name 'Unity-iPhone.xcodeproj' -type d 2>/dev/null | head -1)
           if [ -z "$XCODEPROJ" ]; then
             echo "ERROR: Could not find Unity-iPhone.xcodeproj"
-            find build -type d | head -30
             exit 1
           fi
           echo "Found Xcode project: $XCODEPROJ"
@@ -51,6 +47,9 @@ jobs:
           cp -r build/Unity-iPhone.xcarchive/Products/Applications/*.app Payload/
           zip -r TetrisM_iOS.ipa Payload
           ls -la TetrisM_iOS.ipa
+          # Copy to known location for upload
+          mkdir -p "$GITHUB_WORKSPACE/build/iOS"
+          cp TetrisM_iOS.ipa "$GITHUB_WORKSPACE/build/iOS/"
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
