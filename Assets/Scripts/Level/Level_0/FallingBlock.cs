@@ -384,7 +384,7 @@ public class FallingBlock : MonoBehaviour
     public GroupTypes Holding = GroupTypes.I;
     public bool isHolding = false;
     public bool couldHold = true;
-    public int DAS=500, ARR=50,ARR_down=20;
+    public int DAS=150, ARR=30,ARR_down=20;
 
     public void Reload()
     {
@@ -393,6 +393,12 @@ public class FallingBlock : MonoBehaviour
         timmer = fallingTime;
         Type = GetOneFromWaiting();
         Rotation = Rotations.Zero;
+        
+        // Assign different sprite IDs for each piece type
+        // Uses Blocks.png sprite sheet indices for Minecraft-themed visuals
+        int[] typeSprites = { 2, 3, 4, 5, 6, 7, 8 }; // I,O,L,J,T,Z,ZM
+        int baseID = typeSprites[(int)Type];
+        BlockID = new int[4] { baseID, baseID, baseID, baseID };
 
         transform.localPosition = Frame.instance.GetPosV2(Pos);
         fallingGroupShow.SetType(Type);

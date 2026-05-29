@@ -10,6 +10,7 @@ public class Ground : MonoBehaviour
 
     public Block[,] Blocks { get; private set; } = new Block[10, 20];
     public GameObject[] blockPrefabs;
+    public Sprite[] blockSprites; // Sprites from Blocks.png for different block types
 
     public delegate void Call();
     public Call UpdateCall;
@@ -193,5 +194,7 @@ public class Ground : MonoBehaviour
         Blocks[pos.x, pos.y] = Instantiate(blockPrefabs[id]).GetComponent<Block>();
         Blocks[pos.x, pos.y].transform.SetParent(transform, false);
         Blocks[pos.x, pos.y].Init(new Vector2Int(pos.x, pos.y),this);
+        if (blockSprites != null && id < blockSprites.Length && blockSprites[id] != null)
+            Blocks[pos.x, pos.y].SetSprite(blockSprites[id]);
     }
 }

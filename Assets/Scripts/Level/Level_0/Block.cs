@@ -41,6 +41,13 @@ public class Block : MonoBehaviour
 
     protected Vector2Int moveStartPos, moveEndPos;
     protected float waitingTime, movingTime,nowTime;
+    public virtual void SetSprite(Sprite sprite)
+    {
+        var sr = GetComponent<SpriteRenderer>();
+        if (sr != null && sprite != null)
+            sr.sprite = sprite;
+    }
+
     protected virtual void Moving()
     {
         nowTime += Time.deltaTime;
