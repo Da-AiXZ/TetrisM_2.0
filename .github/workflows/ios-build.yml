@@ -19,7 +19,8 @@ jobs:
           /Applications/Unity\ Hub.app/Contents/MacOS/Unity\ Hub -- --headless install \
             --version 2022.3.34f1 \
             --changeset 1e17368ca73f \
-            --module ios
+            --module ios \
+            --architecture arm64
         timeout-minutes: 15
 
       - name: Build Xcode Project
