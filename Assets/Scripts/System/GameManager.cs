@@ -23,8 +23,8 @@ public class GameManager : MonoBehaviour
             Destroy(gameObject);
         }
 
-        LoadSceneAdditivelyAsync("Input", (Scene loadedScene) =>{inputScene = loadedScene;});
-        LoadLevel(0);
+        LoadSceneName("Input");
+        LoadSceneName("Level_0");
     }
 
     public void LoadSceneName(string name)
