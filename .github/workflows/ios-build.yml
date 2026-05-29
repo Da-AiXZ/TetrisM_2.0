@@ -2,26 +2,41 @@ name: iOS Build
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 jobs:
   build-ios:
     runs-on: macos-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build Unity (Xcode project)
-        uses: game-ci/unity-builder@v4
-        env:
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        with:
-          targetPlatform: iOS
-          unityVersion: 2022.3.34f1
-          buildMethod: ''
+      - name: Install Unity
+        run: |
+          brew install --cask unity-hub
+          /Applications/Unity\ Hub.app/Contents/MacOS/Unity\ Hub -- --headless install \
+            --version 2022.3.34f1 \
+            --module ios \
+            --childModules
+
+      - name: Activate Unity Personal License
+        run: |
+          /Applications/Unity/Hub/Editor/2022.3.34f1/Unity.app/Contents/MacOS/Unity \
+            -quit -batchmode -nographics \
+            -username ${{ secrets.UNITY_EMAIL }} \
+            -password ${{ secrets.UNITY_PASSWORD }} \
+            -logFile activate.log
+          cat activate.log
+
+      - name: Build Xcode Project
+        run: |
+          /Applications/Unity/Hub/Editor/2022.3.34f1/Unity.app/Contents/MacOS/Unity \
+            -quit -batchmode -nographics \
+            -projectPath $PWD \
+            -buildTarget iOS \
+            -executeMethod UnityEditor.BuildPipeline.BuildPlayer \
+            -logFile build.log
+          cat build.log
 
       - name: Build unsigned IPA
         run: |
@@ -38,7 +53,6 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM=""
           
-          # Package as IPA
           mkdir -p Payload
           cp -r build/Unity-iPhone.xcarchive/Products/Applications/*.app Payload/
           zip -r TetrisM_iOS.ipa Payload
