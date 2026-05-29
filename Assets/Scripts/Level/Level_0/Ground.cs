@@ -10,7 +10,22 @@ public class Ground : MonoBehaviour
 
     public Block[,] Blocks { get; private set; } = new Block[10, 20];
     public GameObject[] blockPrefabs;
-    public Sprite[] blockSprites; // Sprites from Blocks.png for different block types
+    private static Sprite[] _loadedSprites;
+    
+    private Sprite GetBlockSprite(int id)
+    {
+        if (_loadedSprites == null)
+        {
+            var all = Resources.LoadAll<Sprite>("Sprites/Blocks");
+            _loadedSprites = all;
+        }
+        string name = $"Blocks_{id - 1}";
+        foreach (var s in _loadedSprites)
+        {
+            if (s.name == name) return s;
+        }
+        return null;
+    }
 
     public delegate void Call();
     public Call UpdateCall;
@@ -194,7 +209,7 @@ public class Ground : MonoBehaviour
         Blocks[pos.x, pos.y] = Instantiate(blockPrefabs[id]).GetComponent<Block>();
         Blocks[pos.x, pos.y].transform.SetParent(transform, false);
         Blocks[pos.x, pos.y].Init(new Vector2Int(pos.x, pos.y),this);
-        if (blockSprites != null && id < blockSprites.Length && blockSprites[id] != null)
-            Blocks[pos.x, pos.y].SetSprite(blockSprites[id]);
+        Sprite s = GetBlockSprite(id);
+        if (s != null) Blocks[pos.x, pos.y].SetSprite(s);
     }
 }
