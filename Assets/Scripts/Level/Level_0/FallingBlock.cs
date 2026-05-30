@@ -763,18 +763,39 @@ public class FallingBlock : MonoBehaviour
                 return;
             }
         }
+
+        // APK: landing effects (camera shake + classified sound)
+        CameraShake.Shake(0f, 0.1f);
+        PlayLandingSound(blockID[0]);
+
         for (int i = 0; i < 4; i++)
         {
             Vector2Int blockPos = new(dat[(int)rotation, i, 0] + pos.x, dat[(int)rotation, i, 1] + pos.y);
             int id = blockID[i];
-            // APK: water(58)/lava(56) do NOT place solid blocks; they call fluid system
-            // For batch1 without fluid: skip them, they vanish
-            if (id == 58 || id == 56)
-            {
-                continue;
-            }
+            // APK: water(58)/lava(56) call fluid system instead of solid block
+            if (id == 58) { Water.AddWater(blockPos.x, blockPos.y); continue; }
+            if (id == 56) { Lava.AddWater(blockPos.x, blockPos.y); continue; }
             Ground.Instance.SetBlock(blockPos, id);
         }
+    }
+
+    // APK FallDown.Down(): classified landing sounds
+    private static void PlayLandingSound(int id)
+    {
+        if (id == 1 || id == 3 || id == 4 || id == 10 || id == 15)
+            AudioManager.PlayRandom("grass", 4);
+        else if (id == 8)
+            AudioManager.PlayRandom("sand", 4);
+        else if (id == 11 || id == 19 || id == 20)
+            AudioManager.PlayRandom("wood", 4);
+        else if ((id % 2 == 0 && id >= 26 && id <= 34) || (id % 2 == 1 && id >= 37 && id <= 41) || (id >= 42 && id <= 48) || id == 54)
+            AudioManager.PlayRandom("cloth", 4);
+        else if (id == 56)
+            AudioManager.PlayRandom("lava", 3);
+        else if (id == 58)
+            AudioManager.PlayRandom("water", 3);
+        else
+            AudioManager.PlayRandom("stone", 4);
     }
 
     private static bool CheckPosFit(Vector2Int pos,GroupTypes type,Rotations rotation)

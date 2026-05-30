@@ -51,6 +51,7 @@ public class Ground : MonoBehaviour
             timmer -= tickTime;
             DoTick();
             CheckFull();
+            RunFluidSim();
         }
     }
 
@@ -183,7 +184,16 @@ public class Ground : MonoBehaviour
 
     private void ExplodeTNT(int x, int y, Block b)
     {
-        // Simplified explosion: clear blocks in5×4 area (APK pattern)
+        // APK: spawn TNT explosion entity
+        var tntGO = new GameObject("Tnt_1");
+        tntGO.transform.position = new Vector2(-2.8f + x * 0.4f, -3.8f + y * 0.4f);
+        var tnt = tntGO.AddComponent<Tnt_1>();
+        tnt.cx = x; tnt.cy = y;
+
+        // Camera shake
+        CameraShake.Shake(0.3f, 0.3f);
+
+        // Clear blocks in5×4 area (APK pattern)
         for (int dx = -2; dx <= 2; dx++)
         {
             for (int dy = -1; dy <= 2; dy++)
@@ -197,7 +207,7 @@ public class Ground : MonoBehaviour
                     if (tid == 1) // Chain reaction TNT
                     {
                         SetBlock(new Vector2Int(tx, ty), 0);
-                        ExplodeTNT(tx, ty, null); // recursive chain
+                        ExplodeTNT(tx, ty, null);
                     }
                     else
                     {
@@ -290,7 +300,10 @@ public class Ground : MonoBehaviour
         {
             SetBlock(new Vector2Int(x, y-1), 0); SetBlock(new Vector2Int(x, y-2), 0);
             SetBlock(new Vector2Int(x, y), 0);
-            // TODO: spawn SnowMan entity (batch3)
+            var sm = new GameObject("SnowMan");
+            sm.transform.position = new Vector2(-2.8f + x * 0.4f, -3.8f + y * 0.4f);
+            sm.AddComponent<SnowMan>();
+            AudioManager.Play("snowman_voice");
             return;
         }
         // Vertical up
@@ -376,6 +389,17 @@ public class Ground : MonoBehaviour
             }
         }
     }
+    }
+
+    // APK Water/Lava fluid simulation (called every tick)
+    public void MarkTick(int x, int y) { if (x>=0 && x<10 && y>=0 && y<20) ticksToProcess[x,y]=true; }
+    private bool[,] ticksToProcess = new bool[10,20];
+    private void RunFluidSim()
+    {
+        if (Water.Instance != null) Water.Instance.Simulate();
+        if (Lava.Instance != null) Lava.Instance.Simulate();
+    }
+
 
     private bool CheckFull()
     {
@@ -448,6 +472,13 @@ public class Ground : MonoBehaviour
                 }
             }
         }
+
+        // APK: score = Pow(2,count)*100
+        int scoreAdd = (int)Mathf.Pow(2f, full.Count) * 100;
+        // APK: camera shake on line clear
+        CameraShake.Shake(0f, 0.4f);
+        // APK: levelup sound (>=3 lines = levelup2)
+        AudioManager.Play(full.Count >= 3 ? "levelup2" : "levelup1");
 
         ClearCall?.Invoke(full.Count);
         return true;
