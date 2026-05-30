@@ -417,7 +417,7 @@ public class Ground : MonoBehaviour
             }
         }
     }
-    }
+
 
     // APK Water/Lava fluid simulation (called every tick)
     public void MarkTick(int x, int y) { if (x>=0 && x<10 && y>=0 && y<20) ticksToProcess[x,y]=true; }
@@ -615,4 +615,4 @@ public class Ground : MonoBehaviour
         Sprite s = GetBlockSprite(id);
         if (s != null) Blocks[pos.x, pos.y].SetSprite(s);
     }
-}
+}}
