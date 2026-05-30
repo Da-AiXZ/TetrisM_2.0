@@ -32,7 +32,7 @@ jobs:
           cp -r build/Unity-iPhone.xcarchive/Products/Applications/*.app Payload/
           zip -r TetrisM_iOS.ipa Payload
           mkdir -p "$GITHUB_WORKSPACE/build/iOS"
-          cp TetrisM_iOS.ipa "$GITHUB_WORKSPACE/build/iOS/"
+          cp -n TetrisM_iOS.ipa "$GITHUB_WORKSPACE/build/iOS/" 2>/dev/null; true
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
