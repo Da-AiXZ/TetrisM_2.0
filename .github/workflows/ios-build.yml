@@ -5,7 +5,7 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-13
+    runs-on: macos-latest
     timeout-minutes: 45
     steps:
       - name: Checkout
@@ -19,7 +19,7 @@ jobs:
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
           targetPlatform: iOS
-          unityVersion: 2021.2.7f1
+          unityVersion: 2022.3.34f1
           buildMethod: IOSBuilder.Build
 
       - name: Build unsigned IPA
