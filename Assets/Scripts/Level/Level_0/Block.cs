@@ -4,9 +4,12 @@ using UnityEngine;
 
 public class Block : MonoBehaviour
 {
-    public int ID { get; protected set; } = 1;
+    public int ID { get; set; } = 1;
 
     public Vector2Int Pos { get; private set; }= new Vector2Int();
+
+    // TNT timer (-1 = not TNT, >0 = countdown)
+    public int tntTimer = -1;
 
     public virtual void Break()
     {

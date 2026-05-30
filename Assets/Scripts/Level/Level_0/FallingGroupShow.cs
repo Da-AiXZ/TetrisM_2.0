@@ -30,6 +30,7 @@ public class FallingGroupShow : MonoBehaviour
             {
                 var sp = GetSprite(blockIDs[i]);
                 if (sp != null) sr.sprite = sp;
+                sr.color = Color.white;
             }
         }
     }

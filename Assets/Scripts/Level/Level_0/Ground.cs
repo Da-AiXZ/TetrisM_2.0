@@ -54,9 +54,126 @@ public class Ground : MonoBehaviour
         }
     }
 
+    // === Minecraft Physics (ported from APK Blocks.Tick) ===
     private void DoTick()
     {
+        // Process bottom-up to handle gravity correctly
+        for (int y = 0; y < Frame.ySize; y++)
+        {
+            for (int x = 0; x < Frame.xSize; x++)
+            {
+                TickBlock(x, y);
+            }
+        }
+    }
 
+    private void TickBlock(int x, int y)
+    {
+        Block b = Blocks[x, y];
+        if (b == null) return;
+        int id = b.ID;
+
+        // Water: id3(source) and id4(flowing)
+        if (id == 3 || id == 4)
+        {
+            WaterTick(x, y, b);
+            return;
+        }
+        // Lava: id6(source) and id7(flowing)
+        if (id == 6 || id == 7)
+        {
+            LavaTick(x, y, b);
+            return;
+        }
+        // Sand/Gravel: id13, id14
+        if (id == 13 || id == 14)
+        {
+            GravityTick(x, y, b);
+            return;
+        }
+        // TNT: id8(ready), id10(lit), id11(exploding)
+        if (id == 8 || id == 10 || id == 11)
+        {
+            TNTTick(x, y, b);
+            return;
+        }
+    }
+
+    private void WaterTick(int x, int y, Block b)
+    {
+        // APK: self id3→4, spread to adjacent empty/waterkid
+        if (b.ID == 3) b.ID = 4;
+        if (y + 1 < Frame.ySize && (GetBlockID(new Vector2Int(x, y + 1)) == 0 || GetBlockID(new Vector2Int(x, y + 1)) == 22))
+            SetBlock(new Vector2Int(x, y + 1), 3);
+        if (y - 1 >= 0 && (GetBlockID(new Vector2Int(x, y - 1)) == 0 || GetBlockID(new Vector2Int(x, y - 1)) == 22))
+            SetBlock(new Vector2Int(x, y - 1), 3);
+        if (x + 1 < Frame.xSize && (GetBlockID(new Vector2Int(x + 1, y)) == 0 || GetBlockID(new Vector2Int(x + 1, y)) == 22))
+            SetBlock(new Vector2Int(x + 1, y), 3);
+        if (x - 1 >= 0 && (GetBlockID(new Vector2Int(x - 1, y)) == 0 || GetBlockID(new Vector2Int(x - 1, y)) == 22))
+            SetBlock(new Vector2Int(x - 1, y), 3);
+    }
+
+    private void LavaTick(int x, int y, Block b)
+    {
+        // APK: self id6→7, spread to adjacent empty/lavakid
+        if (b.ID == 6) b.ID = 7;
+        if (y + 1 < Frame.ySize && (GetBlockID(new Vector2Int(x, y + 1)) == 0 || GetBlockID(new Vector2Int(x, y + 1)) == 23))
+            SetBlock(new Vector2Int(x, y + 1), 6);
+        if (y - 1 >= 0 && (GetBlockID(new Vector2Int(x, y - 1)) == 0 || GetBlockID(new Vector2Int(x, y - 1)) == 23))
+            SetBlock(new Vector2Int(x, y - 1), 6);
+        if (x + 1 < Frame.xSize && (GetBlockID(new Vector2Int(x + 1, y)) == 0 || GetBlockID(new Vector2Int(x + 1, y)) == 23))
+            SetBlock(new Vector2Int(x + 1, y), 6);
+        if (x - 1 >= 0 && (GetBlockID(new Vector2Int(x - 1, y)) == 0 || GetBlockID(new Vector2Int(x - 1, y)) == 23))
+            SetBlock(new Vector2Int(x - 1, y), 6);
+    }
+
+    private void GravityTick(int x, int y, Block b)
+    {
+        // APK: if below is empty(0), waterkid(22), or lavakid(23), fall down
+        if (y == 0) return;
+        int below = GetBlockID(new Vector2Int(x, y - 1));
+        if (below == 0 || below == 22 || below == 23 || below == 36)
+        {
+            b.MoveTo(new Vector2Int(x, y - 1), 0.05f, 0.1f);
+        }
+    }
+
+    private void TNTTick(int x, int y, Block b)
+    {
+        // APK: id8→10 on first tick with tntTimer=3; count down; explode at0
+        if (b.ID == 8)
+        {
+            b.ID = 10;
+            b.tntTimer = 3;
+            return;
+        }
+        if (b.ID == 10)
+        {
+            b.tntTimer--;
+            if (b.tntTimer <= 0)
+            {
+                // Explode: clear5x4 area centered on TNT
+                b.ID = 11;
+                for (int dx = -2; dx <= 2; dx++)
+                {
+                    for (int dy = -1; dy <= 2; dy++)
+                    {
+                        int tx = x + dx;
+                        int ty = y + dy;
+                        if (tx >= 0 && tx < Frame.xSize && ty >= 0 && ty < Frame.ySize)
+                        {
+                            SetBlock(new Vector2Int(tx, ty), 0);
+                        }
+                    }
+                }
+            }
+            return;
+        }
+        // id11: exploded, remove self
+        if (b.ID == 11)
+        {
+            SetBlock(new Vector2Int(x, y), 0);
+        }
     }
 
     private bool CheckFull()
@@ -204,6 +321,7 @@ public class Ground : MonoBehaviour
         // Use prefab index1 for high block IDs; sprite comes from GetBlockSprite(id)
         int prefabIdx = (id >= 0 && id < blockPrefabs.Length) ? id : 1;
         Blocks[pos.x, pos.y] = Instantiate(blockPrefabs[prefabIdx]).GetComponent<Block>();
+        Blocks[pos.x, pos.y].ID = id;
         Blocks[pos.x, pos.y].transform.SetParent(transform, false);
         Blocks[pos.x, pos.y].Init(new Vector2Int(pos.x, pos.y),this);
         Sprite s = GetBlockSprite(id);
