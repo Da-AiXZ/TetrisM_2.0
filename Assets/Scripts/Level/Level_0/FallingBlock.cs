@@ -637,6 +637,10 @@ public class FallingBlock : MonoBehaviour
     {
         bool fit;
 
+        // Crush glass below when moving down
+        if (move == Vector2Int.down)
+            CrushGlass(Pos, Type, Rotation);
+
         fit = CheckPosFit(Pos + move, Type, Rotation);
 
         if (fit)
@@ -694,7 +698,14 @@ public class FallingBlock : MonoBehaviour
         for (int i = 0; i < 4; i++)
         {
             Vector2Int blockPos = new(dat[(int)rotation, i, 0] + pos.x, dat[(int)rotation, i, 1] + pos.y);
-            Ground.Instance.SetBlock(blockPos, blockID[i]);
+            int id = blockID[i];
+            // Water(58) and lava(56): skip solid block; fluid system handles them (batch2)
+            if (id == 58 || id == 56)
+            {
+                Ground.Instance.SetBlock(blockPos, 0);
+                continue;
+            }
+            Ground.Instance.SetBlock(blockPos, id);
         }
     }
 
@@ -704,11 +715,39 @@ public class FallingBlock : MonoBehaviour
         for (int i = 0; i < 4; i++)
         {
             Vector2Int blockPos = new(dat[(int)rotation, i, 0]+pos.x, dat[(int)rotation, i, 1]+pos.y);
-            if (Ground.Instance.GetBlockID(blockPos) > 0)
+            int idAt = Ground.Instance.GetBlockID(blockPos);
+            if (idAt > 0)
             {
+                // Pass through water(58) and lava(56)
+                if (idAt == 58 || idAt == 56) continue;
+                // Crush glass(5)
+                if (idAt == 5)
+                {
+                    // Will be crushed; handled in Move() when glass is destroyed
+                    continue;
+                }
                 return false;
             }
         }
         return true;
+    }
+
+    // Check and crush glass below blocks (called before Move succeeds)
+    private static void CrushGlass(Vector2Int pos, GroupTypes type, Rotations rotation)
+    {
+        int[,,] dat = groupDic[type];
+        for (int i = 0; i < 4; i++)
+        {
+            Vector2Int blockPos = new(dat[(int)rotation, i, 0]+pos.x, dat[(int)rotation, i, 1]+pos.y);
+            if (blockPos.y - 1 >= 0 && blockPos.y - 1 < Frame.ySize)
+            {
+                int below = Ground.Instance.GetBlockID(new Vector2Int(blockPos.x, blockPos.y - 1));
+                if (below == 5)
+                {
+                    Ground.Instance.SetBlock(new Vector2Int(blockPos.x, blockPos.y - 1), 0);
+                    // TODO: play glass sound (batch3 audio system)
+                }
+            }
+        }
     }
 }

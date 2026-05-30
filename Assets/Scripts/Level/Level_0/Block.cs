@@ -8,8 +8,16 @@ public class Block : MonoBehaviour
 
     public Vector2Int Pos { get; private set; }= new Vector2Int();
 
-    // TNT timer (-1 = not TNT, >0 = countdown)
+    // Target block timer (id=15 → id=2 after0.5s)
+    public float targetTimer = -1f;
+    // TNT explosion timer (unused simplified, kept for batch3)
     public int tntTimer = -1;
+    // Memory block saved layout (id=12→13)
+    public int[,] savedLayout = null;
+    public int savedX, savedY;
+    public bool isMemoryRestoring = false;
+    public int memoryRestorePhase = 0;
+    public float memoryTimer = 0f;
 
     public virtual void Break()
     {
