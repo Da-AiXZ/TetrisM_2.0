@@ -6,7 +6,7 @@ public class Block : MonoBehaviour
 {
     public int ID { get; set; } = 1;
 
-    public Vector2Int Pos { get; private set; }= new Vector2Int();
+    public Vector2Int Pos { get; set; }= new Vector2Int();
 
     // Target block timer (id=15 → id=2 after0.5s)
     public float targetTimer = -1f;
