@@ -1,245 +1,185 @@
-using System.Collections.Generic;
+using System;
 using UnityEngine;
 
-// APK Water.cs:10×320 sub-grid fluid simulation
-// Each column has up to320 sub-layers (16 per block row)
-// Particles fall down and spread sideways, alternating direction each second
+// APK Water.cs:10×320 sub-grid particle simulation
+// water[x,y]:0=empty,1=water particle,2=flowing
 public class Water : MonoBehaviour
 {
     public static Water Instance { get; private set; }
-
-    // water[10,320]: particle count per sub-cell (0-16)
     public static int[,] water = new int[10, 320];
-    // showingWater[10,320]: whether a WaterKid is currently visible
     public static int[,] showingWater = new int[10, 320];
+    private int tick;
 
-    private static int timer = 0;
-    private static int direction = 1; //1=right,-1=left, alternates each second
-    private static int dirTimer = 0;
-    private const int FULL = 16;
+    private void Awake() { Instance = this; }
 
-    private Dictionary<string, WaterKid> kids = new();
-
-    private void Awake()
+    private void FixedUpdate()
     {
-        Instance = this;
+        tick++;
+        if (tick >= 1) { tick =0; Tick(); }
     }
 
-    // APK: Reset_() - clear all water
     public static void Reset_()
     {
-        for (int x = 0; x < 10; x++)
-            for (int y = 0; y < 320; y++)
-            {
-                water[x, y] = 0;
-                showingWater[x, y] = 0;
-            }
-        timer = 0;
-        direction = 1;
-        dirTimer = 0;
+        for (int x=0; x<10; x++)
+            for (int y=0; y<320; y++)
+            { water[x,y]=0; showingWater[x,y]=0; }
     }
 
-    // APK: AddWater(x,y) - add a full block's worth of water
-    public static void AddWater(int x, int y)
-    {
-        int yy = y * 16;
-        for (int i = 0; i < 16; i++)
-            water[x, yy + i] = 16; // Fill all16 sub-layers
-        // Mark top of this column as active for ticking
-        if (x >= 0 && x < 10 && yy >= 0 && yy < 320)
-            Ground.Instance?.MarkTick(x, y);
-    }
-
-    // APK: DeleteWater(x,y) - remove water at grid position
     public static void DeleteWater(int x, int y)
     {
-        int yy = y * 16;
-        for (int i = 0; i < 16; i++)
-            water[x, yy + i] = 0;
+        for (int i=0; i<16; i++) water[x, i+y*16]=0;
+        Add(x,y);
     }
 
-    // APK: Tick() - simulate one step of fluid physics
-    public void Simulate()
+    public static void AddWater(int x, int y)
     {
-        timer++;
-        if (timer < 50) return; // APK: runs every50 FixedUpdate ticks (~1s)
-        timer = 0;
-
-        // Alternate spread direction each second
-        dirTimer++;
-        if (dirTimer >= 50)
-        {
-            dirTimer = 0;
-            direction = -direction;
-        }
-
-        // Process from bottom to top (water falls down)
-        for (int y = 0; y < 320; y++)
-        {
-            for (int x = 0; x < 10; x++)
-            {
-                int n = water[x, y];
-                if (n <= 0) continue;
-
-                int gridY = y / 16;
-                int subY = y % 16;
-
-                // Check if this cell is part of a solid block
-                if (subY == 0 && gridY < 20)
-                {
-                    int blockID = Ground.Instance.GetBlockID(new Vector2Int(x, gridY));
-                    if (blockID != 0 && blockID != 58 && blockID != 56)
-                        continue; // Blocked by solid (non-fluid)
-                }
-
-                // Fall down if space below
-                if (y > 0 && water[x, y - 1] < FULL)
-                {
-                    int space = FULL - water[x, y - 1];
-                    int move = Mathf.Min(n, space);
-                    water[x, y] -= move;
-                    water[x, y - 1] += move;
-                    continue;
-                }
-
-                // Spread sideways (alternating direction)
-                int nx = x + direction;
-                if (nx >= 0 && nx < 10 && water[nx, y] < FULL)
-                {
-                    int space = FULL - water[nx, y];
-                    int move = Mathf.Min(n / 2, space);
-                    if (move > 0)
-                    {
-                        water[x, y] -= move;
-                        water[nx, y] += move;
-                    }
-                }
-
-                // Check opposite direction too
-                nx = x - direction;
-                if (nx >= 0 && nx < 10 && water[nx, y] < FULL && water[x, y] > 0)
-                {
-                    int space = FULL - water[nx, y];
-                    int move = Mathf.Min(water[x, y] / 2, space);
-                    if (move > 0)
-                    {
-                        water[x, y] -= move;
-                        water[nx, y] += move;
-                    }
-                }
-            }
-        }
-
-        // Update grid blocks: if a column is full → water block(58); if empty → remove
-        for (int x = 0; x < 10; x++)
-        {
-            for (int gy = 0; gy < 20; gy++)
-            {
-                int yy = gy * 16;
-                bool full = true;
-                bool empty = true;
-                for (int i = 0; i < 16; i++)
-                {
-                    if (water[x, yy + i] < FULL) full = false;
-                    if (water[x, yy + i] > 0) empty = false;
-                }
-
-                int existing = Ground.Instance.GetBlockID(new Vector2Int(x, gy));
-                if (full && existing == 0)
-                {
-                    Ground.Instance.SetBlock(new Vector2Int(x, gy), 58);
-                }
-                else if (empty && existing == 58)
-                {
-                    Ground.Instance.SetBlock(new Vector2Int(x, gy), 0);
-                }
-            }
-        }
-
-        RefreshVisuals();
+        for (int i=0; i<16; i++) water[x, i+y*16]=1;
+        Add(x,y);
     }
 
-    // Create/update WaterKid visual objects
-    private void RefreshVisuals()
+    public static void Add(int x, int y)
     {
-        HashSet<string> seen = new();
-        for (int x = 0; x < 10; x++)
+        if (x+1>=0&&x+1<10&&y>=0&&y<20&&Ground.Instance.GetBlockID(new Vector2Int(x+1,y))!=0)
+            Ground.Instance.MarkTick(x+1,y);
+        if (x-1>=0&&x-1<10&&y>=0&&y<20&&Ground.Instance.GetBlockID(new Vector2Int(x-1,y))!=0)
+            Ground.Instance.MarkTick(x-1,y);
+        if (x>=0&&x<10&&y+1>=0&&y+1<20&&Ground.Instance.GetBlockID(new Vector2Int(x,y+1))!=0)
+            Ground.Instance.MarkTick(x,y+1);
+        if (x>=0&&x<10&&y-1>=0&&y-1<20&&Ground.Instance.GetBlockID(new Vector2Int(x,y-1))!=0)
+            Ground.Instance.MarkTick(x,y-1);
+    }
+
+    // APK Tick() - particle simulation
+    public void Tick()
+    {
+        int i =0, j=0, k=0, sec=DateTime.Now.Second;
+        // Phase1: push particles out of solid blocks
+        while (i<10)
         {
-            int runStart = -1;
-            int runLen = 0;
-            for (int y = 0; y < 320; y++)
+            if ((water[i,j]==1||water[i,j]==2) &&
+                Ground.Instance.GetBlockID(new Vector2Int(i,j/16))!=0 &&
+                Ground.Instance.GetBlockID(new Vector2Int(i,j/16))!=56 &&
+                Ground.Instance.GetBlockID(new Vector2Int(i,j/16))!=58)
             {
-                if (water[x, y] > 0)
+                k=1; water[i,j]=0;
+                if (sec%2==0)
                 {
-                    if (runStart < 0) runStart = y;
-                    runLen++;
+                    while (true)
+                    {
+                        if (water[i,j+k]!=1&&water[i,j+k]!=2&&
+                            (Ground.Instance.GetBlockID(new Vector2Int(i,(j+k)/16))==0||
+                             Ground.Instance.GetBlockID(new Vector2Int(i,(j+k)/16))==56||
+                             Ground.Instance.GetBlockID(new Vector2Int(i,(j+k)/16))==58))
+                            { water[i,j+k]=1; break; }
+                        if (i>0&&water[i-1,j+k]!=1&&water[i-1,j+k]!=2&&
+                            (Ground.Instance.GetBlockID(new Vector2Int(i-1,(j+k)/16))==0||
+                             Ground.Instance.GetBlockID(new Vector2Int(i-1,(j+k)/16))==56||
+                             Ground.Instance.GetBlockID(new Vector2Int(i-1,(j+k)/16))==58))
+                            { water[i-1,j+k]=1; break; }
+                        if (i<9&&water[i+1,j+k]!=1&&water[i+1,j+k]!=2&&
+                            (Ground.Instance.GetBlockID(new Vector2Int(i+1,(j+k)/16))==0||
+                             Ground.Instance.GetBlockID(new Vector2Int(i+1,(j+k)/16))==56||
+                             Ground.Instance.GetBlockID(new Vector2Int(i+1,(j+k)/16))==58))
+                            { water[i+1,j+k]=1; break; }
+                        k++;
+                        if (j+k>319) { /* MySystem.gameOver=true would go here */ break; }
+                    }
                 }
                 else
                 {
-                    if (runLen > 0 && runStart >= 0)
+                    while (true)
                     {
-                        string key = $"{x},{runStart}";
-                        seen.Add(key);
-                        UpdateKid(key, x, runStart, runLen);
-                        runStart = -1;
-                        runLen = 0;
+                        if (water[i,j+k]!=1&&water[i,j+k]!=2&&
+                            (Ground.Instance.GetBlockID(new Vector2Int(i,(j+k)/16))==0||
+                             Ground.Instance.GetBlockID(new Vector2Int(i,(j+k)/16))==56||
+                             Ground.Instance.GetBlockID(new Vector2Int(i,(j+k)/16))==58))
+                            { water[i,j+k]=1; break; }
+                        if (i<9&&water[i+1,j+k]!=1&&water[i+1,j+k]!=2&&
+                            (Ground.Instance.GetBlockID(new Vector2Int(i+1,(j+k)/16))==0||
+                             Ground.Instance.GetBlockID(new Vector2Int(i+1,(j+k)/16))==56||
+                             Ground.Instance.GetBlockID(new Vector2Int(i+1,(j+k)/16))==58))
+                            { water[i+1,j+k]=1; break; }
+                        if (i>0&&water[i-1,j+k]!=1&&water[i-1,j+k]!=2&&
+                            (Ground.Instance.GetBlockID(new Vector2Int(i-1,(j+k)/16))==0||
+                             Ground.Instance.GetBlockID(new Vector2Int(i-1,(j+k)/16))==56||
+                             Ground.Instance.GetBlockID(new Vector2Int(i-1,(j+k)/16))==58))
+                            { water[i-1,j+k]=1; break; }
+                        k++;
+                        if (j+k>319) { break; }
                     }
                 }
             }
-            if (runLen > 0 && runStart >= 0)
-            {
-                string key = $"{x},{runStart}";
-                seen.Add(key);
-                UpdateKid(key, x, runStart, runLen);
-            }
+            sec++; j++;
+            if (j>=320) { j=0; i++; }
         }
-
-        // Remove unseen kids
-        var toRemove = new List<string>();
-        foreach (var kv in kids)
-            if (!seen.Contains(kv.Key))
-                toRemove.Add(kv.Key);
-        foreach (var key in toRemove)
+        // Phase2: compact - fill gaps
+        bool flag=false;
+        i=0; j=0;
+        while (i<10)
         {
-            if (kids[key] != null)
+            if (j<319)
             {
-                kids[key].GoodBye();
-                Destroy(kids[key].gameObject);
+                if ((water[i,j+1]==1||water[i,j+1]==2)&&water[i,j]==0&&
+                    (Ground.Instance.GetBlockID(new Vector2Int(i,j/16))==0||
+                     Ground.Instance.GetBlockID(new Vector2Int(i,j/16))==56||
+                     Ground.Instance.GetBlockID(new Vector2Int(i,j/16))==58)&&!flag)
+                    { water[i,j]=1; flag=true; }
+                else if (water[i,j+1]==0&&flag)
+                    { water[i,j]=0; flag=false; }
             }
-            kids.Remove(key);
+            j++;
+            if (j>=320) { if (flag) water[i,319]=0; j=0; i++; }
         }
-    }
-
-    private void UpdateKid(string key, int x, int y, int len)
-    {
-        if (!kids.ContainsKey(key))
+        // Phase3: spread sideways
+        i=0; j=0;
+        int n5=-1;
+        sec=DateTime.Now.Second;
+        while (i<10)
         {
-            var go = new GameObject($"Water{x},{y}");
-            go.transform.SetParent(transform);
-            var kid = go.AddComponent<WaterKid>();
-            kid.x = x;
-            kid.y = y;
-            kid.n = len;
-            kid.sprite = go.AddComponent<SpriteRenderer>();
-            // Use water sprite (id=58)
-            var sp = Resources.Load<Sprite>("Sprites/Blocks");
-            if (sp == null)
+            if (j>0)
             {
-                var all = Resources.LoadAll<Sprite>("Sprites/Blocks");
-                foreach (var s in all)
-                    if (s.name == "Blocks_58")
-                    {
-                        kid.sprite.sprite = s;
-                        break;
-                    }
+                if (n5==-1&&water[i,j-1]==0&&(water[i,j]==1||water[i,j]==2)&&
+                    (Ground.Instance.GetBlockID(new Vector2Int(i,(j-1)/16))==0||
+                     Ground.Instance.GetBlockID(new Vector2Int(i,(j-1)/16))==56||
+                     Ground.Instance.GetBlockID(new Vector2Int(i,(j-1)/16))==58))
+                    n5=j;
+                if (n5!=-1&&water[i,j]==0) n5=-1;
+                if (sec%2==1)
+                {
+                    if (i>0&&n5==-1&&(water[i,j]==1||water[i,j]==2)&&water[i-1,j]!=1&&water[i-1,j]!=2&&
+                        (Ground.Instance.GetBlockID(new Vector2Int(i-1,j/16))==0||
+                         Ground.Instance.GetBlockID(new Vector2Int(i-1,j/16))==56||
+                         Ground.Instance.GetBlockID(new Vector2Int(i-1,j/16))==58))
+                        { water[i,j]=0; water[i-1,j]=1; }
+                }
+                else if (i<9&&n5==-1&&(water[i,j]==1||water[i,j]==2)&&water[i+1,j]!=1&&water[i+1,j]!=2&&
+                    (Ground.Instance.GetBlockID(new Vector2Int(i+1,j/16))==0||
+                     Ground.Instance.GetBlockID(new Vector2Int(i+1,j/16))==56||
+                     Ground.Instance.GetBlockID(new Vector2Int(i+1,j/16))==58))
+                    { water[i,j]=0; water[i+1,j]=1; }
             }
-            kid.sprite.color = new Color(0.27f, 0.44f, 0.91f, 0.7f); // Blue water tint
-            kid.Hello();
-            kids[key] = kid;
+            sec++; j++;
+            if (j>=320) { j=0; i++; }
         }
-        else if (kids[key] != null && kids[key].n != len)
+        // Phase4: update grid blocks
+        i=0; j=0;
+        int n6=0;
+        bool full=true;
+        while (i<10)
         {
-            kids[key].Wei(len);
+            if (water[i,j*16+n6]!=1) full=false;
+            n6++;
+            if (n6>=16)
+            {
+                if (full)
+                    Ground.Instance.SetBlock(new Vector2Int(i,j),58);
+                else if (Ground.Instance.GetBlockID(new Vector2Int(i,j))==58)
+                    Ground.Instance.SetBlock(new Vector2Int(i,j),0);
+                full=true; n6=0; j++;
+            }
+            if (j>=20) { j=0; i++; }
         }
+        // Phase5: visual refresh (simplified - no WaterKid prefabs)
+        // APK: ResetShowingWater() creates/destroys WaterKid GameObjects
     }
 }

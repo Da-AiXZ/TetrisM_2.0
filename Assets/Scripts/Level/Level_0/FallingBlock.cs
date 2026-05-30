@@ -396,6 +396,7 @@ public class FallingBlock : MonoBehaviour
 
     public void Reload()
     {
+        if (isGameOver) return;
         couldHold = true;
         Pos =new Vector2Int(3, 18);
         fallTick = 0;
@@ -449,20 +450,24 @@ public class FallingBlock : MonoBehaviour
         
         int GetRandomBlockID()
         {
-            // APK: 50% range A, 50% range B
-            if (Random.Range(1, 3) ==1)
+            // APK EXACT: 50% range A, while checks FINAL id (after +36 offset)
+            if (Random.Range(1, 3) == 1)
             {
-                int rid;
-                do { rid = Random.Range(1, 23); }
-                while (rid ==0 || rid ==4 || rid ==7 || rid ==12 || rid ==13 || rid ==14 || rid ==57);
-                if (rid >=18) rid +=36;
+                int rid = 0;
+                while (rid == 0 || rid == 4 || rid == 7 || rid == 12 || rid == 13 || rid == 14 || rid == 57)
+                {
+                    rid = Random.Range(1, 23);
+                    if (rid >= 18) rid += 36;
+                }
                 return rid;
             }
             else
             {
-                int rid;
-                do { rid = Random.Range(18, 53); }
-                while (rid ==0 || rid ==4 || rid ==7 || rid ==13 || rid ==14 || rid ==49);
+                int rid = 0;
+                while (rid == 0 || rid == 4 || rid == 7 || rid == 13 || rid == 14 || rid == 49)
+                {
+                    rid = Random.Range(18, 53);
+                }
                 return rid;
             }
         }
@@ -691,6 +696,7 @@ public class FallingBlock : MonoBehaviour
 
     public delegate void GameOverCall();
     public static event GameOverCall OnGameOver;
+    public static bool isGameOver = false;
 
     private bool Move(Vector2Int move,bool set)
     {
@@ -709,7 +715,7 @@ public class FallingBlock : MonoBehaviour
         else if(set)
         {
             SetBlock(Pos, Type, Rotation, BlockID);
-            Reload();
+            if (!isGameOver) Reload();
             return false;
         }
         else
@@ -759,6 +765,7 @@ public class FallingBlock : MonoBehaviour
             int absY = dat[(int)rotation, i, 1] + pos.y;
             if (absY > 19)
             {
+                isGameOver = true;
                 OnGameOver?.Invoke();
                 return;
             }

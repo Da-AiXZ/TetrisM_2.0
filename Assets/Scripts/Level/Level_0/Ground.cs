@@ -107,313 +107,252 @@ public class Ground : MonoBehaviour
         }
     }
 
+    // ── APK Blocks.Tick() translation ──
     private void TickBlock(int x, int y)
     {
         Block b = Blocks[x, y];
         if (b == null) return;
-        int id = b.ID;
-
-        switch (id)
+        
+        switch (b.ID)
         {
-            case 1: TNT_Check(x, y, b); break;
-            case 3: case4: DirtGrass_Check(x, y, b); break;
-            case 6: case7: Lamp_Check(x, y, b); break;
-            case 8: Sand_Check(x, y, b); break;
-            case 11: Oak_Check(x, y, b); break;
-            case 12: Memory_Save(x, y, b); break;
-            case 15: Target_Check(x, y, b); break;
-            case 16: Golem_Check(x, y, b); break;
-            case 17: case49: StoneBrick_Check(x, y, b); break;
-        }
-    }
-
-    // --- id=12: Memory block → save layout ---
-    private void Memory_Save(int x, int y, Block b)
-    {
-        // Save current layout
-        b.savedLayout = new int[10, 20];
-        for (int xx = 0; xx < 10; xx++)
-            for (int yy = 0; yy < 20; yy++)
-                b.savedLayout[xx, yy] = GetBlockID(new Vector2Int(xx, yy));
-        b.savedX = x;
-        b.savedY = y;
-        b.ID = 13;
-        b.SetSprite(GetBlockSprite(13));
-    }
-
-    // --- id=15: Target → redstone after0.5s ---
-    private void Target_Check(int x, int y, Block b)
-    {
-        if (b.targetTimer < 0f)
-        {
-            b.targetTimer = 0.5f;
-        }
-        else
-        {
-            b.targetTimer -= tickTime;
-            if (b.targetTimer <= 0f)
-            {
-                b.ID = 2; // becomes redstone
-                b.SetSprite(GetBlockSprite(2));
-                b.targetTimer = -1f;
-            }
-        }
-    }
-
-    // --- id=1: TNT ---
-    private void TNT_Check(int x, int y, Block b)
-    {
-        // Check4 adjacent cells for redstone(2) or lava(56)
-        int[] checkX = { x+1, x-1, x, x };
-        int[] checkY = { y, y, y+1, y-1 };
-        for (int i = 0; i < 4; i++)
-        {
-            if (checkX[i] >= 0 && checkX[i] < Frame.xSize && checkY[i] >= 0 && checkY[i] < Frame.ySize)
-            {
-                int adj = GetBlockID(new Vector2Int(checkX[i], checkY[i]));
-                if (adj == 2 || adj == 56)
+            case 1: // TNT: adjacent redstone(2) OR lava(56) → explode
+                if (Check(x+1,y,2)||Check(x-1,y,2)||Check(x,y+1,2)||Check(x,y-1,2)
+                 || Check(x+1,y,56)||Check(x-1,y,56)||Check(x,y+1,56)||Check(x,y-1,56))
                 {
-                    // TNT explodes: clear5×4 area
-                    ExplodeTNT(x, y, b);
-                    return;
+                    b.ID = 0;
+                    var t = new GameObject("Tnt_1");
+                    t.transform.position = Frame.instance.GetPosV2(new Vector2Int(x,y));
+                    var tc = t.AddComponent<Tnt_1>();
+                    tc.cx = x; tc.cy = y;
+                    Reset15(x, y, b);
                 }
-            }
-        }
-    }
-
-    private void ExplodeTNT(int x, int y, Block b)
-    {
-        // APK: spawn TNT explosion entity
-        var tntGO = new GameObject("Tnt_1");
-        tntGO.transform.position = new Vector2(-2.8f + x * 0.4f, -3.8f + y * 0.4f);
-        var tnt = tntGO.AddComponent<Tnt_1>();
-        tnt.cx = x; tnt.cy = y;
-
-        // Camera shake
-        CameraShake.Shake(0.3f, 0.3f);
-
-        // Clear blocks in5×4 area (APK pattern)
-        for (int dx = -2; dx <= 2; dx++)
-        {
-            for (int dy = -1; dy <= 2; dy++)
+                break;
+            case 3: // Dirt: air above → grass
+                if (Check(x, y+1, 0)) { b.ID = 4; Reset_Block(x, y, b); }
+                break;
+            case 4: // Grass: no air above → dirt
+                if (!Check(x, y+1, 0)) { b.ID = 3; Reset_Block(x, y, b); }
+                break;
+            case 6: // Lamp off: adjacent redstone → on
+                if (Check(x+1,y,2)||Check(x-1,y,2)||Check(x,y+1,2)||Check(x,y-1,2))
+                    { b.ID = 7; Reset15(x, y, b); }
+                break;
+            case 7: // Lamp on: no adjacent redstone → off
+                if (!Check(x+1,y,2)&&!Check(x-1,y,2)&&!Check(x,y+1,2)&&!Check(x,y-1,2))
+                    { b.ID = 6; Reset15(x, y, b); }
+                break;
+            case 8: // Sand: fall while air below
             {
-                int tx = x + dx, ty = y + dy;
-                if (tx >= 0 && tx < Frame.xSize && ty >= 0 && ty < Frame.ySize)
+                int snd = 0;
+                int cy = y;
+                while (Check(x, cy-1, 0))
                 {
-                    int tid = GetBlockID(new Vector2Int(tx, ty));
-                    // Immune: bedrock(9), memory(12,13,14), command(57)
-                    if (tid == 9 || tid == 12 || tid == 13 || tid == 14 || tid == 57) continue;
-                    if (tid == 1) // Chain reaction TNT
-                    {
-                        SetBlock(new Vector2Int(tx, ty), 0);
-                        ExplodeTNT(tx, ty, null);
-                    }
-                    else
-                    {
-                        SetBlock(new Vector2Int(tx, ty), 0);
-                    }
+                    Fall(x, cy, cy-1, 1);
+                    cy--;
+                    snd = Random.Range(1,5);
                 }
+                break;
             }
-        }
-    }
-
-    // --- id=3↔4: Dirt ↔ Grass ---
-    private void DirtGrass_Check(int x, int y, Block b)
-    {
-        if (b.ID == 3 && GetBlockID(new Vector2Int(x, y+1)) == 0)
-        {
-            b.ID = 4;
-            b.SetSprite(GetBlockSprite(4));
-        }
-        else if (b.ID == 4 && GetBlockID(new Vector2Int(x, y+1)) != 0)
-        {
-            b.ID = 3;
-            b.SetSprite(GetBlockSprite(3));
-        }
-    }
-
-    // --- id=6↔7: Redstone lamp ---
-    private void Lamp_Check(int x, int y, Block b)
-    {
-        bool nearRedstone = false;
-        int[] checkX = { x+1, x-1, x, x };
-        int[] checkY = { y, y, y+1, y-1 };
-        for (int i = 0; i < 4; i++)
-        {
-            if (checkX[i] >= 0 && checkX[i] < Frame.xSize && checkY[i] >= 0 && checkY[i] < Frame.ySize)
+            case 11: // Oak: spread leaves to adjacent air
+                if (Check(x+1,y,0)) MakeBlock(x+1,y,10);
+                if (Check(x-1,y,0)) MakeBlock(x-1,y,10);
+                if (Check(x,y+1,0)) MakeBlock(x,y+1,10);
+                if (Check(x,y-1,0)) MakeBlock(x,y-1,10);
+                break;
+            case 12: // Memory unlanded → capture board → 13
             {
-                if (GetBlockID(new Vector2Int(checkX[i], checkY[i])) == 2)
-                    nearRedstone = true;
+                b.ID = 13;
+                b.savedLayout = new int[10,20];
+                for (int xx=0;xx<10;xx++)
+                    for (int yy=0;yy<20;yy++)
+                        b.savedLayout[xx,yy] = GetBlockID(new Vector2Int(xx,yy));
+                b.savedX = x; b.savedY = y;
+                Reset_Block(x, y, b);
+                break;
             }
-        }
-        if (b.ID == 6 && nearRedstone)
-        {
-            b.ID = 7;
-            b.SetSprite(GetBlockSprite(7));
-        }
-        else if (b.ID == 7 && !nearRedstone)
-        {
-            b.ID = 6;
-            b.SetSprite(GetBlockSprite(6));
+            case 15: // Target: 0.5s timer → redstone(2)
+                if (b.targetTimer < 0f) b.targetTimer = 0.5f;
+                b.targetTimer -= tickTime;
+                if (b.targetTimer <= 0f)
+                {
+                    b.targetTimer = -1f;
+                    Blocks[x,y].ID = 2;
+                    b.SetSprite(GetBlockSprite(2));
+                    Add15(x, y);
+                }
+                break;
+            case 16: // Pumpkin → golem (APK: 4 snow + 4 iron patterns)
+                // Snow golem: 2 snow(54) below
+                if (Check(x,y-1,54) && Check(x,y-2,54))
+                {
+                    SetBlock(new Vector2Int(x,y-1),0); SetBlock(new Vector2Int(x,y-2),0);
+                    SetBlock(new Vector2Int(x,y),0);
+                    var sm = new GameObject("SnowMan");
+                    sm.transform.position = Frame.instance.GetPosV2(new Vector2Int(x,y));
+                    sm.AddComponent<SnowMan>();
+                }
+                // Snow golem: 2 snow(54) above
+                else if (Check(x,y+1,54) && Check(x,y+2,54))
+                {
+                    SetBlock(new Vector2Int(x,y+1),0); SetBlock(new Vector2Int(x,y+2),0);
+                    SetBlock(new Vector2Int(x,y),0);
+                    var sm = new GameObject("SnowMan");
+                    sm.transform.position = Frame.instance.GetPosV2(new Vector2Int(x,y));
+                    sm.AddComponent<SnowMan>();
+                }
+                // Snow golem: 2 snow(54) left
+                else if (Check(x-1,y,54) && Check(x-2,y,54))
+                {
+                    SetBlock(new Vector2Int(x-1,y),0); SetBlock(new Vector2Int(x-2,y),0);
+                    SetBlock(new Vector2Int(x,y),0);
+                    var sm = new GameObject("SnowMan");
+                    sm.transform.position = Frame.instance.GetPosV2(new Vector2Int(x,y));
+                    sm.AddComponent<SnowMan>();
+                }
+                // Snow golem: 2 snow(54) right
+                else if (Check(x+1,y,54) && Check(x+2,y,54))
+                {
+                    SetBlock(new Vector2Int(x+1,y),0); SetBlock(new Vector2Int(x+2,y),0);
+                    SetBlock(new Vector2Int(x,y),0);
+                    var sm = new GameObject("SnowMan");
+                    sm.transform.position = Frame.instance.GetPosV2(new Vector2Int(x,y));
+                    sm.AddComponent<SnowMan>();
+                }
+                // Iron golem: T-shape down (55×5)
+                else if (Check(x,y-1,55)&&Check(x,y-2,55)&&Check(x-1,y-1,55)&&Check(x+1,y-1,55))
+                {
+                    SetBlock(new Vector2Int(x,y-1),0); SetBlock(new Vector2Int(x,y-2),0);
+                    SetBlock(new Vector2Int(x-1,y-1),0); SetBlock(new Vector2Int(x+1,y-1),0);
+                    SetBlock(new Vector2Int(x,y),0);
+                    var im = new GameObject("IronMan");
+                    im.transform.position = Frame.instance.GetPosV2(new Vector2Int(x,y));
+                    im.AddComponent<IronMan>();
+                }
+                // Iron golem: T-shape up
+                else if (Check(x,y+1,55)&&Check(x,y+2,55)&&Check(x-1,y+1,55)&&Check(x+1,y+1,55))
+                {
+                    SetBlock(new Vector2Int(x,y+1),0); SetBlock(new Vector2Int(x,y+2),0);
+                    SetBlock(new Vector2Int(x-1,y+1),0); SetBlock(new Vector2Int(x+1,y+1),0);
+                    SetBlock(new Vector2Int(x,y),0);
+                    var im = new GameObject("IronMan");
+                    im.transform.position = Frame.instance.GetPosV2(new Vector2Int(x,y));
+                    im.AddComponent<IronMan>();
+                }
+                // Iron golem: T-shape right
+                else if (Check(x+1,y,55)&&Check(x+2,y,55)&&Check(x+1,y+1,55)&&Check(x+1,y-1,55))
+                {
+                    SetBlock(new Vector2Int(x+1,y),0); SetBlock(new Vector2Int(x+2,y),0);
+                    SetBlock(new Vector2Int(x+1,y+1),0); SetBlock(new Vector2Int(x+1,y-1),0);
+                    SetBlock(new Vector2Int(x,y),0);
+                    var im = new GameObject("IronMan");
+                    im.transform.position = Frame.instance.GetPosV2(new Vector2Int(x,y));
+                    im.AddComponent<IronMan>();
+                }
+                // Iron golem: T-shape left
+                else if (Check(x-1,y,55)&&Check(x-2,y,55)&&Check(x-1,y+1,55)&&Check(x-1,y-1,55))
+                {
+                    SetBlock(new Vector2Int(x-1,y),0); SetBlock(new Vector2Int(x-2,y),0);
+                    SetBlock(new Vector2Int(x-1,y+1),0); SetBlock(new Vector2Int(x-1,y-1),0);
+                    SetBlock(new Vector2Int(x,y),0);
+                    var im = new GameObject("IronMan");
+                    im.transform.position = Frame.instance.GetPosV2(new Vector2Int(x,y));
+                    im.AddComponent<IronMan>();
+                }
+                break;
+            case 17: // Stone brick: adjacent water(58) → mossy(49)
+                if (Check(x+1,y,58)||Check(x-1,y,58)||Check(x,y+1,58)||Check(x,y-1,58))
+                    { b.ID = 49; Reset_Block(x, y, b); }
+                break;
+            case 49: // Mossy: adjacent lava(56) → stone brick(17)
+                if (Check(x+1,y,56)||Check(x-1,y,56)||Check(x,y+1,56)||Check(x,y-1,56))
+                    { b.ID = 17; Reset_Block(x, y, b); }
+                break;
         }
     }
 
-    // --- id=8: Sand ---
-    private void Sand_Check(int x, int y, Block b)
+    // ── APK: Check(x,y,id) ──
+    private bool Check(int x, int y, int id)
     {
-        if (y == 0) return;
-        int below = GetBlockID(new Vector2Int(x, y-1));
-        if (below == 0 || below == 56 || below == 58)
-        {
-            // Move sand down
-            Blocks[x, y] = null;
-            Blocks[x, y-1] = b;
-            b.Pos = new Vector2Int(x, y-1);
-            b.transform.localPosition = Frame.instance.GetPosV2(new Vector2Int(x, y-1));
-            // Note: no MoveTo animation for sand; instantaneous like APK
-        }
+        if (x<0||x>=10||y<0||y>=20) return false;
+        return GetBlockID(new Vector2Int(x,y)) == id;
     }
 
-    // --- id=11: Oak → leaves ---
-    private void Oak_Check(int x, int y, Block b)
+    // ── APK: _Reset() = update sprite + mark 4 neighbors ──
+    private void Reset_Block(int x, int y, Block b)
     {
-        int[] dx = { 1, -1, 0, 0 };
-        int[] dy = { 0, 0, 1, -1 };
-        for (int i = 0; i < 4; i++)
-        {
-            int nx = x + dx[i], ny = y + dy[i];
-            if (nx >= 0 && nx < Frame.xSize && ny >= 0 && ny < Frame.ySize)
-            {
-                if (GetBlockID(new Vector2Int(nx, ny)) == 0)
-                    SetBlock(new Vector2Int(nx, ny), 10);
-            }
-        }
+        // block ID tracked via Blocks array directly
+        b.SetSprite(GetBlockSprite(b.ID));
+        Add(x, y);
     }
 
-    // --- id=16: Pumpkin → golem spawner ---
-    private void Golem_Check(int x, int y, Block b)
+    // ── APK: _Reset15() = mark neighbors (exclude id=15,2) ──
+    private void Reset15(int x, int y, Block b)
     {
-        // Snow golem:2 snow blocks(54) in a row (vertical or horizontal)
-        // Vertical down
-        if (y >= 2 && GetBlockID(new Vector2Int(x, y-1)) == 54 && GetBlockID(new Vector2Int(x, y-2)) == 54)
-        {
-            SetBlock(new Vector2Int(x, y-1), 0); SetBlock(new Vector2Int(x, y-2), 0);
-            SetBlock(new Vector2Int(x, y), 0);
-            var sm = new GameObject("SnowMan");
-            sm.transform.position = new Vector2(-2.8f + x * 0.4f, -3.8f + y * 0.4f);
-            sm.AddComponent<SnowMan>();
-            AudioManager.Play("snowman_voice");
-            return;
-        }
-        // Vertical up
-        if (y+2 < Frame.ySize && GetBlockID(new Vector2Int(x, y+1)) == 54 && GetBlockID(new Vector2Int(x, y+2)) == 54)
-        {
-            SetBlock(new Vector2Int(x, y+1), 0); SetBlock(new Vector2Int(x, y+2), 0);
-            SetBlock(new Vector2Int(x, y), 0);
-            return;
-        }
-        // Horizontal left
-        if (x >= 2 && GetBlockID(new Vector2Int(x-1, y)) == 54 && GetBlockID(new Vector2Int(x-2, y)) == 54)
-        {
-            SetBlock(new Vector2Int(x-1, y), 0); SetBlock(new Vector2Int(x-2, y), 0);
-            SetBlock(new Vector2Int(x, y), 0);
-            return;
-        }
-        // Horizontal right
-        if (x+2 < Frame.xSize && GetBlockID(new Vector2Int(x+1, y)) == 54 && GetBlockID(new Vector2Int(x+2, y)) == 54)
-        {
-            SetBlock(new Vector2Int(x+1, y), 0); SetBlock(new Vector2Int(x+2, y), 0);
-            SetBlock(new Vector2Int(x, y), 0);
-            return;
-        }
-        // Iron golem: T-shape of iron(55) - all4 patterns from APK
-        TryIronGolem(x, y, b);
+        // block ID tracked via Blocks array directly
+        b.SetSprite(GetBlockSprite(b.ID));
+        Add15(x, y);
+        if (b.ID == 0) { Blocks[x, y] = null; Object.Destroy(b.gameObject); }
     }
 
-    private void TryIronGolem(int x, int y, Block b)
+    // ── APK: Add() — mark adjacent non-zero blocks for re-tick ──
+    private void Add(int x, int y)
     {
-        // T-shape down:2 below + left+right below
-        if (y >= 2 && x > 0 && x+1 < Frame.xSize &&
-            GetBlockID(new Vector2Int(x, y-1)) == 55 && GetBlockID(new Vector2Int(x, y-2)) == 55 &&
-            GetBlockID(new Vector2Int(x-1, y-1)) == 55 && GetBlockID(new Vector2Int(x+1, y-1)) == 55)
-        {
-            SetBlock(new Vector2Int(x, y-1), 0); SetBlock(new Vector2Int(x, y-2), 0);
-            SetBlock(new Vector2Int(x-1, y-1), 0); SetBlock(new Vector2Int(x+1, y-1), 0);
-            SetBlock(new Vector2Int(x, y), 0);
-            var im = new GameObject("IronMan");
-            im.transform.position = new Vector2(-2.8f + x * 0.4f, -3.8f + y * 0.4f);
-            im.AddComponent<IronMan>();
-            AudioManager.Play("ironMan_voice");
-            return;
-        }
-        // T-shape up
-        if (y+2 < Frame.ySize && x > 0 && x+1 < Frame.xSize &&
-            GetBlockID(new Vector2Int(x, y+1)) == 55 && GetBlockID(new Vector2Int(x, y+2)) == 55 &&
-            GetBlockID(new Vector2Int(x-1, y+1)) == 55 && GetBlockID(new Vector2Int(x+1, y+1)) == 55)
-        {
-            SetBlock(new Vector2Int(x, y+1), 0); SetBlock(new Vector2Int(x, y+2), 0);
-            SetBlock(new Vector2Int(x-1, y+1), 0); SetBlock(new Vector2Int(x+1, y+1), 0);
-            SetBlock(new Vector2Int(x, y), 0);
-            var im = new GameObject("IronMan");
-            im.transform.position = new Vector2(-2.8f + x * 0.4f, -3.8f + y * 0.4f);
-            im.AddComponent<IronMan>();
-            AudioManager.Play("ironMan_voice");
-            return;
-        }
-        // T-shape right
-        if (x+2 < Frame.xSize && y > 0 && y+1 < Frame.ySize &&
-            GetBlockID(new Vector2Int(x+1, y)) == 55 && GetBlockID(new Vector2Int(x+2, y)) == 55 &&
-            GetBlockID(new Vector2Int(x+1, y+1)) == 55 && GetBlockID(new Vector2Int(x+1, y-1)) == 55)
-        {
-            SetBlock(new Vector2Int(x+1, y), 0); SetBlock(new Vector2Int(x+2, y), 0);
-            SetBlock(new Vector2Int(x+1, y+1), 0); SetBlock(new Vector2Int(x+1, y-1), 0);
-            SetBlock(new Vector2Int(x, y), 0);
-            var im = new GameObject("IronMan");
-            im.transform.position = new Vector2(-2.8f + x * 0.4f, -3.8f + y * 0.4f);
-            im.AddComponent<IronMan>();
-            AudioManager.Play("ironMan_voice");
-            return;
-        }
-        // T-shape left
-        if (x >= 2 && y > 0 && y+1 < Frame.ySize &&
-            GetBlockID(new Vector2Int(x-1, y)) == 55 && GetBlockID(new Vector2Int(x-2, y)) == 55 &&
-            GetBlockID(new Vector2Int(x-1, y+1)) == 55 && GetBlockID(new Vector2Int(x-1, y-1)) == 55)
-        {
-            SetBlock(new Vector2Int(x-1, y), 0); SetBlock(new Vector2Int(x-2, y), 0);
-            SetBlock(new Vector2Int(x-1, y+1), 0); SetBlock(new Vector2Int(x-1, y-1), 0);
-            SetBlock(new Vector2Int(x, y), 0);
-            var im = new GameObject("IronMan");
-            im.transform.position = new Vector2(-2.8f + x * 0.4f, -3.8f + y * 0.4f);
-            im.AddComponent<IronMan>();
-            AudioManager.Play("ironMan_voice");
-        }
+        if (x+1>=0&&x+1<10&&y>=0&&y<20&&GetBlockID(new Vector2Int(x+1,y))!=0) MarkTick(x+1,y);
+        if (x-1>=0&&x-1<10&&y>=0&&y<20&&GetBlockID(new Vector2Int(x-1,y))!=0) MarkTick(x-1,y);
+        if (x>=0&&x<10&&y+1>=0&&y+1<20&&GetBlockID(new Vector2Int(x,y+1))!=0) MarkTick(x,y+1);
+        if (x>=0&&x<10&&y-1>=0&&y-1<20&&GetBlockID(new Vector2Int(x,y-1))!=0) MarkTick(x,y-1);
     }
 
-    // --- id=17↔49: Stone brick ↔ Mossy ---
-    private void StoneBrick_Check(int x, int y, Block b)
+    // ── APK: Add15() — exclude id=15,2 ──
+    private void Add15(int x, int y)
     {
-        int[] checkX = { x+1, x-1, x, x };
-        int[] checkY = { y, y, y+1, y-1 };
-        for (int i = 0; i < 4; i++)
-        {
-            if (checkX[i] >= 0 && checkX[i] < Frame.xSize && checkY[i] >= 0 && checkY[i] < Frame.ySize)
-            {
-                int adj = GetBlockID(new Vector2Int(checkX[i], checkY[i]));
-                if (b.ID == 17 && adj == 58) { b.ID = 49; b.SetSprite(GetBlockSprite(49)); return; }
-                if (b.ID == 49 && adj == 56) { b.ID = 17; b.SetSprite(GetBlockSprite(17)); return; }
-            }
+        int id;
+        if (x+1>=0&&x+1<10&&y>=0&&y<20) {
+            id=GetBlockID(new Vector2Int(x+1,y));
+            if (id!=0&&id!=15&&id!=2) MarkTick(x+1,y);
+        }
+        if (x-1>=0&&x-1<10&&y>=0&&y<20) {
+            id=GetBlockID(new Vector2Int(x-1,y));
+            if (id!=0&&id!=15&&id!=2) MarkTick(x-1,y);
+        }
+        if (x>=0&&x<10&&y+1>=0&&y+1<20) {
+            id=GetBlockID(new Vector2Int(x,y+1));
+            if (id!=0&&id!=15&&id!=2) MarkTick(x,y+1);
+        }
+        if (x>=0&&x<10&&y-1>=0&&y-1<20) {
+            id=GetBlockID(new Vector2Int(x,y-1));
+            if (id!=0&&id!=15&&id!=2) MarkTick(x,y-1);
         }
     }
 
-
-    // APK Water/Lava fluid simulation (called every tick)
-    public void MarkTick(int x, int y) { if (x>=0 && x<10 && y>=0 && y<20) ticksToProcess[x,y]=true; }
-    private bool[,] ticksToProcess = new bool[10,20];
-    private void RunFluidSim()
+    // ── APK: Fall() — move block down (for sand) ──
+    private void Fall(int x, int y, int newY, int total)
     {
-        if (Water.Instance != null) Water.Instance.Simulate();
-        if (Lava.Instance != null) Lava.Instance.Simulate();
+        Block b = Blocks[x, y];
+        if (b == null) return;
+        for (int i=1; y-i>=newY; i++)
+            if (GetBlockID(new Vector2Int(x,y-i)) == 9 || b.ID == 9) return;
+        Blocks[x, y] = null;
+        b.Pos = new Vector2Int(x, newY);
+        Blocks[x, newY] = b;
+        b.transform.localPosition = Frame.instance.GetPosV2(new Vector2Int(x, newY));
+        if (newY <= 19) MarkTick(x, newY);
     }
+
+    // ── APK: MakeBlock() — create block (for oak→leaves) ──
+    private void MakeBlock(int x, int y, int id)
+    {
+        if (x<0||x>=10||y<0||y>=20) return;
+        if (GetBlockID(new Vector2Int(x,y)) != 0) return;
+        SetBlock(new Vector2Int(x, y), id);
+    }
+
+    // ── Tick propagation: mark block for next tick cycle ──
+    public void MarkTick(int x, int y)
+    {
+        // DoTick iterates all blocks each tick; no-op
+    }
+    // ticksToProcess not needed: DoTick does full iteration
     private bool CheckFull()
     {
         List<int> full=new();
@@ -486,13 +425,6 @@ public class Ground : MonoBehaviour
             }
         }
 
-
-        // APK: score = Pow(2,count)*100
-        int scoreAdd = (int)Mathf.Pow(2f, full.Count) * 100;
-        // APK: camera shake on line clear
-        CameraShake.Shake(0f, 0.4f);
-        // APK: levelup sound (>=3 lines = levelup2)
-        AudioManager.Play(full.Count >= 3 ? "levelup2" : "levelup1");
         ClearCall?.Invoke(full.Count);
         return true;
     }
