@@ -1,0 +1,13 @@
+{
+    "name": "Assembly-CSharp",
+    "rootNamespace": "",
+    "references": [
+        "UnityEngine.UI",
+        "UnityEngine.EventSystems"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "autoReferenced": true
+}
