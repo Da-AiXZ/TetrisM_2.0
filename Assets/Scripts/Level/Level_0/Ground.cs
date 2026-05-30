@@ -51,7 +51,6 @@ public class Ground : MonoBehaviour
             timmer -= tickTime;
             DoTick();
             CheckFull();
-            RunFluidSim();
         }
     }
 
@@ -311,10 +310,6 @@ public class Ground : MonoBehaviour
         {
             SetBlock(new Vector2Int(x, y+1), 0); SetBlock(new Vector2Int(x, y+2), 0);
             SetBlock(new Vector2Int(x, y), 0);
-            var sm = new GameObject("SnowMan");
-            sm.transform.position = new Vector2(-2.8f + x * 0.4f, -3.8f + y * 0.4f);
-            sm.AddComponent<SnowMan>();
-            AudioManager.Play("snowman_voice");
             return;
         }
         // Horizontal left
@@ -322,10 +317,6 @@ public class Ground : MonoBehaviour
         {
             SetBlock(new Vector2Int(x-1, y), 0); SetBlock(new Vector2Int(x-2, y), 0);
             SetBlock(new Vector2Int(x, y), 0);
-            var sm = new GameObject("SnowMan");
-            sm.transform.position = new Vector2(-2.8f + x * 0.4f, -3.8f + y * 0.4f);
-            sm.AddComponent<SnowMan>();
-            AudioManager.Play("snowman_voice");
             return;
         }
         // Horizontal right
@@ -333,10 +324,6 @@ public class Ground : MonoBehaviour
         {
             SetBlock(new Vector2Int(x+1, y), 0); SetBlock(new Vector2Int(x+2, y), 0);
             SetBlock(new Vector2Int(x, y), 0);
-            var sm = new GameObject("SnowMan");
-            sm.transform.position = new Vector2(-2.8f + x * 0.4f, -3.8f + y * 0.4f);
-            sm.AddComponent<SnowMan>();
-            AudioManager.Play("snowman_voice");
             return;
         }
         // Iron golem: T-shape of iron(55) - all4 patterns from APK
@@ -399,7 +386,6 @@ public class Ground : MonoBehaviour
             im.transform.position = new Vector2(-2.8f + x * 0.4f, -3.8f + y * 0.4f);
             im.AddComponent<IronMan>();
             AudioManager.Play("ironMan_voice");
-            return;
         }
     }
 
@@ -428,8 +414,6 @@ public class Ground : MonoBehaviour
         if (Water.Instance != null) Water.Instance.Simulate();
         if (Lava.Instance != null) Lava.Instance.Simulate();
     }
-
-
     private bool CheckFull()
     {
         List<int> full=new();
@@ -502,13 +486,13 @@ public class Ground : MonoBehaviour
             }
         }
 
+
         // APK: score = Pow(2,count)*100
         int scoreAdd = (int)Mathf.Pow(2f, full.Count) * 100;
         // APK: camera shake on line clear
         CameraShake.Shake(0f, 0.4f);
         // APK: levelup sound (>=3 lines = levelup2)
         AudioManager.Play(full.Count >= 3 ? "levelup2" : "levelup1");
-
         ClearCall?.Invoke(full.Count);
         return true;
     }
