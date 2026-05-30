@@ -383,7 +383,7 @@ public class FallingBlock : MonoBehaviour
     public GroupTypes Holding = GroupTypes.I;
     public bool isHolding = false;
     public bool couldHold = true;
-    private bool hadMemoryBlockThisRound = false;
+    public static bool hadMemoryBlockThisRound = false;
     // Tick-based movement (APK system: FixedUpdate = 50Hz = 20ms per tick)
     private int fallTick = 0;
     private int moveTick = 0;
@@ -391,7 +391,7 @@ public class FallingBlock : MonoBehaviour
     private const int SOFT_DROP = 5;    // 5 ticks = 100ms soft drop
     private const int MOVE_REPEAT = 10; // 10 ticks = 200ms left/right repeat
 
-    // Track previous block ID for TNT chain (APK: FallDown.Start())
+    // Track previous block ID for TNT chain (APK: GameObject.Find("FallDown").id)
     private int _prevBlockID = 0;
 
     public void Reload()
@@ -403,58 +403,67 @@ public class FallingBlock : MonoBehaviour
         Type = GetOneFromWaiting();
         Rotation = Rotations.Zero;
         
-        // APK exact logic: each sub-block independently randomized
-        // num = Random(0,100); if <1 → memory; if <30 && prev was TNT → trigger; else → random
-        for (int i = 0; i < 4; i++)
+        // APK EXACT: one random ID for all4 sub-blocks (a.id=b.id=c.id=d.id=id)
+        int id = GetRandomBlockID();
+        
+        // APK: TNT chain — if previous block was TNT(1),30% chance override
+        if (_prevBlockID == 1)
         {
-            int num = Random.Range(0, 100);
-            int id;
-            
-            if (num < 1)
-            {
-                // 1% chance: memory block (only if none active)
-                if (!hadMemoryBlockThisRound)
-                {
-                    id = 12;
-                    hadMemoryBlockThisRound = true;
-                }
-                else
-                {
-                    id = GetRandomBlockID();
-                }
-            }
-            else if (num < 30 && _prevBlockID == 1)
-            {
-                // 29% chance: TNT chain trigger blocks
-                int r2 = Random.Range(0, 3);
-                id = (r2 == 0) ? 56 : (r2 == 1) ? 2 : 15; // lava, redstone, target
-            }
-            else
-            {
-                id = GetRandomBlockID();
-            }
-            
-            BlockID[i] = id;
-            _prevBlockID = id;
+            int num = Random.Range(1, 100);
+            if (num <30) id =56;       // lava
+            else if (num <60) id =2;    // redstone
+            else if (num <90) id =15;   // target
         }
+        
+        BlockID[0] = id;
+        BlockID[1] = id;
+        BlockID[2] = id;
+        BlockID[3] = id;
+        
+        // APK: memory block — roll per sub-block, first hit wins
+        if (!hadMemoryBlockThisRound)
+        {
+            if (Random.Range(1, 100) ==3)
+            {
+                BlockID[0] =12;
+                hadMemoryBlockThisRound = true;
+            }
+            else if (Random.Range(1, 100) ==3)
+            {
+                BlockID[1] =12;
+                hadMemoryBlockThisRound = true;
+            }
+            else if (Random.Range(1, 100) ==3)
+            {
+                BlockID[2] =12;
+                hadMemoryBlockThisRound = true;
+            }
+            else if (Random.Range(1, 100) ==3)
+            {
+                BlockID[3] =12;
+                hadMemoryBlockThisRound = true;
+            }
+        }
+        
+        _prevBlockID = id;
         
         int GetRandomBlockID()
         {
             // APK: 50% range A, 50% range B
-            if (Random.Range(0, 2) == 0)
+            if (Random.Range(1, 3) ==1)
             {
-                int id;
-                do { id = Random.Range(1, 23); }
-                while (id == 0 || id == 4 || id == 7 || id == 12 || id == 13 || id == 14 || id == 57);
-                if (id >= 18) id += 36;
-                return id;
+                int rid;
+                do { rid = Random.Range(1, 23); }
+                while (rid ==0 || rid ==4 || rid ==7 || rid ==12 || rid ==13 || rid ==14 || rid ==57);
+                if (rid >=18) rid +=36;
+                return rid;
             }
             else
             {
-                int id;
-                do { id = Random.Range(18, 54); }
-                while (id == 4 || id == 7 || id == 13 || id == 14 || id == 49);
-                return id;
+                int rid;
+                do { rid = Random.Range(18, 53); }
+                while (rid ==0 || rid ==4 || rid ==7 || rid ==13 || rid ==14 || rid ==49);
+                return rid;
             }
         }
 
@@ -700,17 +709,6 @@ public class FallingBlock : MonoBehaviour
         else if(set)
         {
             SetBlock(Pos, Type, Rotation, BlockID);
-            // APK GameOver: check AFTER placing, don't block Reload
-            int[,,] dat = groupDic[Type];
-            bool gameOver = false;
-            for (int i = 0; i < 4; i++)
-            {
-                int by = dat[(int)Rotation, i, 1] + Pos.y;
-                if (by >= Frame.ySize)
-                    gameOver = true;
-            }
-            if (gameOver)
-                OnGameOver?.Invoke();
             Reload();
             return false;
         }
@@ -755,14 +753,24 @@ public class FallingBlock : MonoBehaviour
             Debug.LogError("Wrong blockID length!");
             return;
         }
+        // APK GameOver: check EACH sub-block's absolute Y before placing
+        for (int i = 0; i < 4; i++)
+        {
+            int absY = dat[(int)rotation, i, 1] + pos.y;
+            if (absY > 19)
+            {
+                OnGameOver?.Invoke();
+                return;
+            }
+        }
         for (int i = 0; i < 4; i++)
         {
             Vector2Int blockPos = new(dat[(int)rotation, i, 0] + pos.x, dat[(int)rotation, i, 1] + pos.y);
             int id = blockID[i];
-            // Water(58) and lava(56): place as normal blocks for now; fluid system in batch2
-            if (false && (id == 58 || id == 56))
+            // APK: water(58)/lava(56) do NOT place solid blocks; they call fluid system
+            // For batch1 without fluid: skip them, they vanish
+            if (id == 58 || id == 56)
             {
-                Ground.Instance.SetBlock(blockPos, 0);
                 continue;
             }
             Ground.Instance.SetBlock(blockPos, id);
@@ -778,8 +786,8 @@ public class FallingBlock : MonoBehaviour
             int idAt = Ground.Instance.GetBlockID(blockPos);
             if (idAt > 0)
             {
-                // Water/lava: treat as solid for now (batch2 adds pass-through)
-                if (false && (idAt == 58 || idAt == 56)) continue;
+                // Water/lava: pass-through (APK allows falling through) (batch2 adds pass-through)
+                if (idAt == 58 || idAt == 56) continue;
                 // Crush glass(5)
                 if (idAt == 5)
                 {

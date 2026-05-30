@@ -91,6 +91,7 @@ public class Ground : MonoBehaviour
                 pendingRestore.ID = 14;
                 pendingRestore.SetSprite(GetBlockSprite(14));
                 pendingRestore.isMemoryRestoring = false;
+                FallingBlock.hadMemoryBlockThisRound = false;
                 pendingRestore.memoryRestorePhase = 0;
                 pendingRestore = null;
             }
