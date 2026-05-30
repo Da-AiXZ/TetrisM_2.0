@@ -1,0 +1,859 @@
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class MySystem : MonoBehaviour
+{
+	[StructLayout(LayoutKind.Sequential, Size = 1)]
+	public struct keys
+	{
+		public static string w = "w";
+
+		public static string a = "a";
+
+		public static string s = "s";
+
+		public static string d = "d";
+
+		public static string up = "up";
+
+		public static string left = "left";
+
+		public static string down = "down";
+
+		public static string right = "right";
+
+		public static string space = "space";
+	}
+
+	public static bool isPhone = true;
+
+	private static AsyncOperation scene;
+
+	public static int score = 0;
+
+	public static int bestScore = 0;
+
+	public static int[,] blocks = new int[10, 25];
+
+	public static int speed = 50;
+
+	public static Sprite[] BlocksSprite;
+
+	public static GameObject BlockMother;
+
+	public static GameObject start;
+
+	public static GameObject tnt_2;
+
+	public static GameObject tnt;
+
+	public static GameObject self;
+
+	public static GameObject block;
+
+	public static GameObject snowMan;
+
+	public static GameObject ironMan;
+
+	public static bool isStart = false;
+
+	public static bool isHold = false;
+
+	public static bool gameOver = false;
+
+	public static bool[] types = new bool[7] { true, true, true, true, true, true, true };
+
+	public static bool[,] ticks = new bool[10, 20];
+
+	public static GameObject FallDowns;
+
+	public static GameObject waterKids;
+
+	public static GameObject lavaKids;
+
+	public static int[] buttonDown = new int[3];
+
+	public static int[] buttonDownb = new int[3];
+
+	public static bool hadDown = false;
+
+	public static bool hadTurn = false;
+
+	public static bool hadGod;
+
+	public static bool is1;
+
+	public static bool is2;
+
+	public static bool isBack = false;
+
+	public static AudioSource sound;
+
+	public static AudioSource sound2;
+
+	public static AudioClip exp1;
+
+	public static AudioClip exp2;
+
+	public static AudioClip exp3;
+
+	public static AudioClip exp4;
+
+	public static AudioClip fuse;
+
+	public static AudioClip cloth1;
+
+	public static AudioClip cloth2;
+
+	public static AudioClip cloth3;
+
+	public static AudioClip cloth4;
+
+	public static AudioClip grass1;
+
+	public static AudioClip grass2;
+
+	public static AudioClip grass3;
+
+	public static AudioClip grass4;
+
+	public static AudioClip gravel1;
+
+	public static AudioClip gravel2;
+
+	public static AudioClip gravel3;
+
+	public static AudioClip gravel4;
+
+	public static AudioClip sand1;
+
+	public static AudioClip sand2;
+
+	public static AudioClip sand3;
+
+	public static AudioClip sand4;
+
+	public static AudioClip stone1;
+
+	public static AudioClip stone2;
+
+	public static AudioClip stone3;
+
+	public static AudioClip stone4;
+
+	public static AudioClip wood1;
+
+	public static AudioClip wood2;
+
+	public static AudioClip wood3;
+
+	public static AudioClip wood4;
+
+	public static AudioClip water1;
+
+	public static AudioClip water2;
+
+	public static AudioClip water3;
+
+	public static AudioClip lava1;
+
+	public static AudioClip lava2;
+
+	public static AudioClip lava3;
+
+	public static AudioClip waterFall1;
+
+	public static AudioClip waterFall2;
+
+	public static AudioClip waterFall3;
+
+	public static AudioClip lavaPop;
+
+	public static AudioClip lavaFall;
+
+	public static AudioClip glass1;
+
+	public static AudioClip glass2;
+
+	public static AudioClip glass3;
+
+	public static AudioClip levelup1;
+
+	public static AudioClip levelup2;
+
+	public static AudioClip turn1;
+
+	public static AudioClip turn2;
+
+	public static AudioClip turn3;
+
+	public static AudioClip turn4;
+
+	public static AudioClip fizz;
+
+	private int rx;
+
+	private int ry;
+
+	private void FixedUpdate()
+	{
+		if (isBack)
+		{
+			return;
+		}
+		if (blocks[rx, ry] != 0 && blocks[rx, ry] != 56 && blocks[rx, ry] != 58)
+		{
+			if ((bool)GameObject.Find(rx + "," + ry))
+			{
+				if (GameObject.Find(rx + "," + ry).GetComponent<Blocks>().id != 15 || blocks[rx, ry] != 2)
+				{
+					GameObject.Find(rx + "," + ry).GetComponent<Blocks>().id = blocks[rx, ry];
+				}
+				GameObject.Find(rx + "," + ry).GetComponent<Blocks>()._Reset();
+			}
+			else
+			{
+				GameObject obj = Object.Instantiate(block);
+				obj.transform.position = new Vector2(-2.8f + (float)rx * 0.4f, -3.8f + (float)ry * 0.4f);
+				obj.transform.SetParent(BlockMother.transform);
+				Blocks component = obj.GetComponent<Blocks>();
+				component.x = rx;
+				component.y = ry;
+				component.id = blocks[rx, ry];
+				component._Reset();
+			}
+		}
+		else if ((bool)GameObject.Find(rx + "," + ry))
+		{
+			Object.Destroy(GameObject.Find(rx + "," + ry));
+		}
+		ry++;
+		if (ry >= 20)
+		{
+			ry = 0;
+			rx++;
+			if (rx >= 10)
+			{
+				rx = 0;
+			}
+		}
+	}
+
+	private void Start()
+	{
+		Reset_();
+	}
+
+	public static void ResetBlocks()
+	{
+		int num = 0;
+		int num2 = 0;
+		while (num < 10)
+		{
+			if (blocks[num, num2] != 0 && blocks[num, num2] != 56 && blocks[num, num2] != 58)
+			{
+				if ((bool)GameObject.Find(num + "," + num2))
+				{
+					if (GameObject.Find(num + "," + num2).GetComponent<Blocks>().id != 15 || blocks[num, num2] != 2)
+					{
+						GameObject.Find(num + "," + num2).GetComponent<Blocks>().id = blocks[num, num2];
+					}
+					GameObject.Find(num + "," + num2).GetComponent<Blocks>()._Reset();
+				}
+				else
+				{
+					GameObject obj = Object.Instantiate(block);
+					obj.transform.position = new Vector2(-2.8f + (float)num * 0.4f, -3.8f + (float)num2 * 0.4f);
+					obj.transform.SetParent(BlockMother.transform);
+					Blocks component = obj.GetComponent<Blocks>();
+					component.x = num;
+					component.y = num2;
+					component.id = blocks[num, num2];
+					component._Reset();
+				}
+			}
+			else if ((bool)GameObject.Find(num + "," + num2))
+			{
+				Object.Destroy(GameObject.Find(num + "," + num2));
+			}
+			num2++;
+			if (num2 >= 20)
+			{
+				num2 = 0;
+				num++;
+			}
+		}
+	}
+
+	private void Update()
+	{
+		Summon(isFirst: false);
+		Tick();
+		if (Input.GetKey("joystick button 0"))
+		{
+			Debug.Log(1);
+		}
+		if (Input.GetKey("o") && Input.GetKey("p"))
+		{
+			if (Input.GetKeyDown("r"))
+			{
+				Reset_();
+				score = -2333333;
+			}
+			if (Input.GetKeyDown("s"))
+			{
+				isStart = true;
+				score = -2333333;
+			}
+		}
+		if (Input.GetKeyDown(KeyCode.Escape))
+		{
+			Application.Quit();
+		}
+		switch (buttonDownb[0])
+		{
+		case 0:
+			buttonDown[0] = 0;
+			break;
+		case 1:
+			buttonDown[0] = 1;
+			break;
+		case 2:
+			buttonDown[0] = 2;
+			break;
+		case 3:
+			buttonDown[0] = 3;
+			break;
+		case 4:
+			buttonDown[0] = 4;
+			break;
+		}
+		if (buttonDownb[1] == 1 && !is1)
+		{
+			buttonDown[1] = 1;
+			is1 = true;
+		}
+		else if (buttonDownb[1] == 1 && is1)
+		{
+			buttonDown[1] = 0;
+		}
+		else if (buttonDownb[1] != 1 && is1)
+		{
+			is1 = false;
+		}
+		if (buttonDownb[2] == 1 && !is2)
+		{
+			buttonDown[2] = 1;
+			is2 = true;
+		}
+		else if (buttonDownb[2] == 1 && is2)
+		{
+			buttonDown[2] = 0;
+		}
+		else if (buttonDownb[2] != 1 && is2)
+		{
+			is2 = false;
+		}
+		buttonDownb = new int[3];
+		if (!isStart)
+		{
+			start.SetActive(value: true);
+			if (Input.GetKeyDown(keys.space) || buttonDown[2] == 1)
+			{
+				Summon(isFirst: true);
+				isStart = true;
+				hadDown = true;
+				start.SetActive(value: false);
+			}
+		}
+		if (gameOver)
+		{
+			start.SetActive(value: true);
+			Reset_();
+		}
+	}
+
+	public static void Reset_()
+	{
+		self = GameObject.Find("mySystem");
+		while ((bool)self.GetComponent<AudioSource>())
+		{
+			Object.DestroyImmediate(self.GetComponent<AudioSource>());
+		}
+		sound = self.AddComponent<AudioSource>();
+		sound2 = self.AddComponent<AudioSource>();
+		sound2.volume = 0.2f;
+		exp1 = Resources.Load("explode1") as AudioClip;
+		exp2 = Resources.Load("explode2") as AudioClip;
+		exp3 = Resources.Load("explode3") as AudioClip;
+		exp4 = Resources.Load("explode4") as AudioClip;
+		fuse = Resources.Load("fuse") as AudioClip;
+		cloth1 = Resources.Load("cloth1") as AudioClip;
+		cloth2 = Resources.Load("cloth2") as AudioClip;
+		cloth3 = Resources.Load("cloth3") as AudioClip;
+		cloth4 = Resources.Load("cloth4") as AudioClip;
+		grass1 = Resources.Load("grass1") as AudioClip;
+		grass2 = Resources.Load("grass2") as AudioClip;
+		grass3 = Resources.Load("grass3") as AudioClip;
+		grass4 = Resources.Load("grass4") as AudioClip;
+		gravel1 = Resources.Load("gravel1") as AudioClip;
+		gravel2 = Resources.Load("gravel2") as AudioClip;
+		gravel3 = Resources.Load("gravel3") as AudioClip;
+		gravel4 = Resources.Load("gravel4") as AudioClip;
+		sand1 = Resources.Load("sand1") as AudioClip;
+		sand2 = Resources.Load("sand2") as AudioClip;
+		sand3 = Resources.Load("sand3") as AudioClip;
+		sand4 = Resources.Load("sand4") as AudioClip;
+		stone1 = Resources.Load("stone1") as AudioClip;
+		stone2 = Resources.Load("stone2") as AudioClip;
+		stone3 = Resources.Load("stone3") as AudioClip;
+		stone4 = Resources.Load("stone4") as AudioClip;
+		wood1 = Resources.Load("wood1") as AudioClip;
+		wood2 = Resources.Load("wood2") as AudioClip;
+		wood3 = Resources.Load("wood3") as AudioClip;
+		wood4 = Resources.Load("wood4") as AudioClip;
+		lava1 = Resources.Load("empty_lava1") as AudioClip;
+		lava2 = Resources.Load("empty_lava2") as AudioClip;
+		lava3 = Resources.Load("empty_lava3") as AudioClip;
+		lavaPop = Resources.Load("lavapop") as AudioClip;
+		lavaFall = Resources.Load("lava") as AudioClip;
+		water1 = Resources.Load("empty1") as AudioClip;
+		water2 = Resources.Load("empty2") as AudioClip;
+		water3 = Resources.Load("empty3") as AudioClip;
+		waterFall1 = Resources.Load("water1") as AudioClip;
+		waterFall2 = Resources.Load("water2") as AudioClip;
+		waterFall3 = Resources.Load("water3") as AudioClip;
+		glass1 = Resources.Load("Glass_break1") as AudioClip;
+		glass2 = Resources.Load("Glass_break2") as AudioClip;
+		glass3 = Resources.Load("Glass_break3") as AudioClip;
+		levelup1 = Resources.Load("levelup1") as AudioClip;
+		levelup2 = Resources.Load("levelup2") as AudioClip;
+		turn1 = Resources.Load("Weak_attack1") as AudioClip;
+		turn2 = Resources.Load("Weak_attack2") as AudioClip;
+		turn3 = Resources.Load("Weak_attack3") as AudioClip;
+		turn4 = Resources.Load("Weak_attack4") as AudioClip;
+		fizz = Resources.Load("Fizz") as AudioClip;
+		isStart = false;
+		isHold = false;
+		start = GameObject.Find("start");
+		gameOver = false;
+		FallDowns = Resources.Load("FallDowns") as GameObject;
+		block = Resources.Load("Block") as GameObject;
+		tnt = Resources.Load("Tnt_1") as GameObject;
+		tnt_2 = Resources.Load("Tnt_2") as GameObject;
+		snowMan = Resources.Load("snowMan_1") as GameObject;
+		ironMan = Resources.Load("ironMan_1") as GameObject;
+		waterKids = Resources.Load("waterKids") as GameObject;
+		lavaKids = Resources.Load("lavaKids") as GameObject;
+		types = new bool[7] { true, true, true, true, true, true, true };
+		BlocksSprite = Resources.LoadAll<Sprite>("Blocks");
+		string text = RFileS("/Score", "/BestScore.cup", 1024);
+		buttonDownb = new int[3];
+		buttonDown = new int[3];
+		Water.Reset_();
+		Lava.Reset_();
+		if (text != "error")
+		{
+			bestScore = int.Parse(text);
+		}
+		else
+		{
+			WFileS("/Score", "/BestScore.cup", "0");
+		}
+		if (score > bestScore)
+		{
+			WFileS("/Score", "/BestScore.cup", score.ToString());
+			bestScore = score;
+		}
+		score = 0;
+		GameObject.Find("Canvas").GetComponent<Score>()._Reset();
+		string text2 = RFileS("/key/", "key.txt", 1024);
+		Physics.autoSimulation = false;
+		if (text2 != "error")
+		{
+			string[] array = text2.Split(',');
+			keys.w = array[1];
+			keys.a = array[4];
+			keys.s = array[10];
+			keys.d = array[7];
+			keys.up = array[2];
+			keys.left = array[5];
+			keys.down = array[11];
+			keys.right = array[8];
+			keys.space = array[13];
+		}
+		else
+		{
+			WFileS("/key/", "key.txt", "转向,w,up,左移,a,left,右移,d,right,下降,s,down,下落,space,\n如果要改动 请不要改变任何逗号 仅第一行有实际作用 中文仅作为提示作用 使用英文标点\n键盘代码见https://blog.csdn.net/KJHKAHDKH/article/details/116360027 删除此文件自动恢复");
+		}
+		int num = 0;
+		int num2 = 0;
+		int[,] array2 = blocks;
+		int upperBound = array2.GetUpperBound(0);
+		int upperBound2 = array2.GetUpperBound(1);
+		for (int i = array2.GetLowerBound(0); i <= upperBound; i++)
+		{
+			for (int j = array2.GetLowerBound(1); j <= upperBound2; j++)
+			{
+				_ = array2[i, j];
+				blocks[num, num2] = 0;
+				num2++;
+				if (num2 > 24)
+				{
+					num2 = 0;
+					num++;
+					if (num > 9)
+					{
+						goto end_IL_06df;
+					}
+				}
+			}
+			continue;
+			end_IL_06df:
+			break;
+		}
+		num = 0;
+		num2 = 0;
+		bool[,] array3 = ticks;
+		upperBound2 = array3.GetUpperBound(0);
+		upperBound = array3.GetUpperBound(1);
+		for (int i = array3.GetLowerBound(0); i <= upperBound2; i++)
+		{
+			for (int j = array3.GetLowerBound(1); j <= upperBound; j++)
+			{
+				_ = array3[i, j];
+				ticks[num, num2] = false;
+				num2++;
+				if (num2 > 19)
+				{
+					num2 = 0;
+					num++;
+					if (num > 9)
+					{
+						goto end_IL_075b;
+					}
+				}
+			}
+			continue;
+			end_IL_075b:
+			break;
+		}
+		while ((bool)GameObject.Find("Showing"))
+		{
+			Object.DestroyImmediate(GameObject.Find("Showing"));
+		}
+		while ((bool)GameObject.Find("Tnt_1"))
+		{
+			Object.DestroyImmediate(GameObject.Find("Tnt_1"));
+		}
+		while ((bool)GameObject.Find("FallDowns"))
+		{
+			Object.DestroyImmediate(GameObject.Find("FallDowns"));
+		}
+		while ((bool)GameObject.Find("BlockMother"))
+		{
+			Object.DestroyImmediate(GameObject.Find("BlockMother"));
+		}
+		BlockMother = new GameObject();
+		BlockMother.name = "BlockMother";
+	}
+
+	public static void ButtonDown(int inp)
+	{
+		switch (inp)
+		{
+		case 1:
+			buttonDownb[0] = 1;
+			break;
+		case 2:
+			buttonDownb[0] = 2;
+			break;
+		case 3:
+			buttonDownb[0] = 3;
+			break;
+		case 4:
+			buttonDownb[0] = 4;
+			break;
+		case 5:
+			buttonDownb[1] = 1;
+			break;
+		case 6:
+			buttonDownb[2] = 1;
+			break;
+		}
+	}
+
+	public static void Summon(bool isFirst)
+	{
+		if (isStart && !isHold)
+		{
+			GameObject.Find("Showing").GetComponent<FallDown>().isShow = false;
+			GameObject.Find("Showing").GetComponent<FallDown>().EndShow();
+			int num = 0;
+			bool[] array = types;
+			for (int i = 0; i < array.Length; i++)
+			{
+				if (array[i])
+				{
+					num++;
+				}
+			}
+			if (num == 0)
+			{
+				types = new bool[7] { true, true, true, true, true, true, true };
+			}
+			num = Random.Range(0, 7);
+			while (!types[num])
+			{
+				num = Random.Range(0, 7);
+			}
+			types[num] = false;
+			Object.Instantiate(FallDowns).GetComponent<FallDown>().type = num;
+		}
+		else
+		{
+			if (!isFirst)
+			{
+				return;
+			}
+			int num2 = 0;
+			bool[] array = types;
+			for (int i = 0; i < array.Length; i++)
+			{
+				if (array[i])
+				{
+					num2++;
+				}
+			}
+			if (num2 == 0)
+			{
+				types = new bool[7] { true, true, true, true, true, true, true };
+			}
+			num2 = Random.Range(0, 7);
+			while (!types[num2])
+			{
+				num2 = Random.Range(0, 7);
+			}
+			types[num2] = false;
+			GameObject obj = Object.Instantiate(FallDowns);
+			obj.GetComponent<FallDown>().type = num2;
+			obj.GetComponent<FallDown>().isShow = false;
+			obj.GetComponent<FallDown>().EndShow();
+			num2 = 0;
+			array = types;
+			for (int i = 0; i < array.Length; i++)
+			{
+				if (array[i])
+				{
+					num2++;
+				}
+			}
+			if (num2 == 0)
+			{
+				types = new bool[7] { true, true, true, true, true, true, true };
+			}
+			num2 = Random.Range(0, 7);
+			while (!types[num2])
+			{
+				num2 = Random.Range(0, 7);
+			}
+			types[num2] = false;
+			Object.Instantiate(FallDowns).GetComponent<FallDown>().type = num2;
+		}
+	}
+
+	public static void Tick()
+	{
+		bool flag = false;
+		int num = 0;
+		int num2 = 0;
+		while (num2 < 20)
+		{
+			if (ticks[num, num2] && !isBack)
+			{
+				BGMM.FakeUpdate();
+				flag = true;
+				if (blocks[num, num2] != 0 && blocks[num, num2] != 56 && blocks[num, num2] != 58)
+				{
+					GameObject.Find(num + "," + num2).GetComponent<Blocks>().Tick();
+				}
+			}
+			ticks[num, num2] = false;
+			num++;
+			if (num > 9)
+			{
+				num = 0;
+				num2++;
+			}
+		}
+		if (flag)
+		{
+			Check();
+		}
+	}
+
+	public static void Check()
+	{
+		int num = 0;
+		int num2 = 0;
+		int num3 = 0;
+		bool[] array = new bool[20];
+		int[,] array2 = blocks;
+		int upperBound = array2.GetUpperBound(0);
+		int upperBound2 = array2.GetUpperBound(1);
+		for (int i = array2.GetLowerBound(0); i <= upperBound; i++)
+		{
+			for (int j = array2.GetLowerBound(1); j <= upperBound2; j++)
+			{
+				_ = array2[i, j];
+				if (blocks[num, num2] != 0)
+				{
+					num3++;
+				}
+				num++;
+				if (num > 9)
+				{
+					if (num3 == 10)
+					{
+						array[num2] = true;
+					}
+					num3 = 0;
+					num = 0;
+					num2++;
+					if (num2 > 19)
+					{
+						goto end_IL_0090;
+					}
+				}
+			}
+			continue;
+			end_IL_0090:
+			break;
+		}
+		num3 = 0;
+		num2 = 0;
+		bool[] array3 = array;
+		foreach (bool num4 in array3)
+		{
+			num = 0;
+			if (num4)
+			{
+				num3++;
+				for (; num < 10; num++)
+				{
+					if (blocks[num, num2] != 13)
+					{
+						if (blocks[num, num2] == 56)
+						{
+							Lava.DeleteWater(num, num2);
+						}
+						else if (blocks[num, num2] == 58)
+						{
+							Water.DeleteWater(num, num2);
+						}
+						else
+						{
+							Object.Destroy(GameObject.Find(num + "," + num2));
+						}
+					}
+					else if (!isBack)
+					{
+						GameObject.Find(num + "," + num2).GetComponent<Blocks>().Back12();
+					}
+					blocks[num, num2] = 0;
+				}
+			}
+			else if (num3 > 0)
+			{
+				FallAbove(num2 - 1, num3);
+				if (num3 > 2)
+				{
+					sound.PlayOneShot(levelup2);
+				}
+				else
+				{
+					sound.PlayOneShot(levelup1);
+				}
+				score += (int)Mathf.Pow(2f, num3) * 100;
+				Score.beLing = 0.9f;
+				num3 = 0;
+			}
+			num2++;
+		}
+		if (num3 > 0)
+		{
+			FallAbove(0, num3);
+			score += (int)Mathf.Pow(2f, num3) * 100;
+			Score.beLing = 0.9f;
+		}
+	}
+
+	public static void FallAbove(int y, int total)
+	{
+		GameObject.Find("Main Camera").GetComponent<MyCamera>().Shake(0f, 0.4f);
+		int num = 0;
+		while (y + num < 20)
+		{
+			num++;
+			for (int i = 0; i < 10; i++)
+			{
+				if (blocks[i, y + num] != 0 && blocks[i, y + num] != 56 && blocks[i, y + num] != 58)
+				{
+					GameObject.Find(i + "," + (y + num)).GetComponent<Blocks>().Fall(y, total);
+				}
+			}
+		}
+		ResetBlocks();
+	}
+
+	public static void StartLoadScene(string name)
+	{
+		scene = SceneManager.LoadSceneAsync(name);
+		scene.allowSceneActivation = false;
+	}
+
+	public static void LoadScene()
+	{
+		scene.allowSceneActivation = true;
+	}
+
+	public static void WFileS(string folder, string file, string inof)
+	{
+		if (!Directory.Exists(Application.persistentDataPath + folder))
+		{
+			Directory.CreateDirectory(Application.persistentDataPath + folder);
+		}
+		if (!File.Exists(Application.persistentDataPath + folder + file))
+		{
+			FileStream fileStream = File.Create(Application.persistentDataPath + folder + file);
+			fileStream.Close();
+			fileStream.Dispose();
+		}
+		byte[] bytes = Encoding.UTF8.GetBytes(inof);
+		FileStream fileStream2 = File.OpenWrite(Application.persistentDataPath + folder + file);
+		fileStream2.Write(bytes, 0, bytes.Length);
+		fileStream2.Close();
+		fileStream2.Dispose();
+	}
+
+	public static string RFileS(string folder, string file, int length)
+	{
+		if (!Directory.Exists(Application.persistentDataPath + folder))
+		{
+			return "error";
+		}
+		if (!File.Exists(Application.persistentDataPath + folder + file))
+		{
+			return "error";
+		}
+		FileStream fileStream = File.OpenRead(Application.persistentDataPath + folder + file);
+		byte[] array = new byte[length + 1];
+		fileStream.Read(array, 0, length);
+		fileStream.Close();
+		fileStream.Dispose();
+		return Encoding.UTF8.GetString(array);
+	}
+}

@@ -3,7 +3,8 @@
 --- !u!78 &1
 TagManager:
   serializedVersion: 2
-  tags: []
+  tags:
+  - tnt
   layers:
   - Default
   - TransparentFX
@@ -11,8 +12,8 @@ TagManager:
   - 
   - Water
   - UI
-  - 
-  - 
+  - tnt
+  - mob
   - 
   - 
   - 
@@ -38,6 +39,18 @@ TagManager:
   - 
   - 
   m_SortingLayers:
+  - name: Background
+    uniqueID: 2887686107
+    locked: 0
   - name: Default
     uniqueID: 0
+    locked: 0
+  - name: Blocks
+    uniqueID: 3046789975
+    locked: 0
+  - name: Water
+    uniqueID: 2112239321
+    locked: 0
+  - name: UI
+    uniqueID: 3249748695
     locked: 0
