@@ -24,15 +24,14 @@ jobs:
 
       - name: Build unsigned IPA
         run: |
-          XCODEPROJ=$(find build -name 'Unity-iPhone.xcodeproj' -type d 2>/dev/null | head -1)
-          if [ -z "$XCODEPROJ" ]; then echo "ERROR: No xcodeproj"; exit 1; fi
+          XCODEPROJ=$(find build -name 'Unity-iPhone.xcodeproj' -type d | head -1)
+          [ -z "$XCODEPROJ" ] && echo "ERROR: No xcodeproj" && exit 1
           cd "$(dirname "$XCODEPROJ")"
-          xcodebuild -project Unity-iPhone.xcodeproj -scheme Unity-iPhone -configuration Release -sdk iphoneos -archivePath build/Unity-iPhone.xcarchive archive CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO DEVELOPMENT_TEAM=""
+          xcodebuild -project Unity-iPhone.xcodeproj -scheme Unity-iPhone -configuration Release -sdk iphoneos -archivePath build/Unity-iPhone.xcarchive archive CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO DEVELOPMENT_TEAM="" || true
           mkdir -p Payload
           cp -r build/Unity-iPhone.xcarchive/Products/Applications/*.app Payload/
-          zip -r TetrisM_iOS.ipa Payload
-          mkdir -p "$GITHUB_WORKSPACE/build/iOS"
-          cp -n TetrisM_iOS.ipa "$GITHUB_WORKSPACE/build/iOS/" 2>/dev/null; true
+          zip -r "$GITHUB_WORKSPACE/build/iOS/TetrisM_iOS.ipa" Payload
+          ls -la "$GITHUB_WORKSPACE/build/iOS/TetrisM_iOS.ipa"
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
