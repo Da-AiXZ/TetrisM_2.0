@@ -384,7 +384,7 @@ public class FallingBlock : MonoBehaviour
     public GroupTypes Holding = GroupTypes.I;
     public bool isHolding = false;
     public bool couldHold = true;
-    public int DAS=150, ARR=30,ARR_down=20;
+    public int DAS=167, ARR=33,ARR_down=17;
 
     public void Reload()
     {
@@ -394,9 +394,9 @@ public class FallingBlock : MonoBehaviour
         Type = GetOneFromWaiting();
         Rotation = Rotations.Zero;
         
-        // Assign different sprite IDs for each piece type
-        // Uses Blocks.png sprite sheet indices for Minecraft-themed visuals
-        int[] typeSprites = { 2, 3, 4, 5, 6, 7, 8 }; // I,O,L,J,T,Z,ZM
+        // Sprite IDs based on APK reverse engineering
+        // I(diamond)=56, O(gold)=55, L(sand)=58, J(wood)=49, T(stone)=17, Z(brick)=18, ZM(dirt)=19
+        int[] typeSprites = { 56, 55, 58, 49, 17, 18, 19 };
         int baseID = typeSprites[(int)Type];
         BlockID = new int[4] { baseID, baseID, baseID, baseID };
 
