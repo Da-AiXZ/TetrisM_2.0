@@ -311,6 +311,10 @@ public class Ground : MonoBehaviour
         {
             SetBlock(new Vector2Int(x, y+1), 0); SetBlock(new Vector2Int(x, y+2), 0);
             SetBlock(new Vector2Int(x, y), 0);
+            var sm = new GameObject("SnowMan");
+            sm.transform.position = new Vector2(-2.8f + x * 0.4f, -3.8f + y * 0.4f);
+            sm.AddComponent<SnowMan>();
+            AudioManager.Play("snowman_voice");
             return;
         }
         // Horizontal left
@@ -318,6 +322,10 @@ public class Ground : MonoBehaviour
         {
             SetBlock(new Vector2Int(x-1, y), 0); SetBlock(new Vector2Int(x-2, y), 0);
             SetBlock(new Vector2Int(x, y), 0);
+            var sm = new GameObject("SnowMan");
+            sm.transform.position = new Vector2(-2.8f + x * 0.4f, -3.8f + y * 0.4f);
+            sm.AddComponent<SnowMan>();
+            AudioManager.Play("snowman_voice");
             return;
         }
         // Horizontal right
@@ -325,6 +333,10 @@ public class Ground : MonoBehaviour
         {
             SetBlock(new Vector2Int(x+1, y), 0); SetBlock(new Vector2Int(x+2, y), 0);
             SetBlock(new Vector2Int(x, y), 0);
+            var sm = new GameObject("SnowMan");
+            sm.transform.position = new Vector2(-2.8f + x * 0.4f, -3.8f + y * 0.4f);
+            sm.AddComponent<SnowMan>();
+            AudioManager.Play("snowman_voice");
             return;
         }
         // Iron golem: T-shape of iron(55) - all4 patterns from APK
@@ -341,6 +353,10 @@ public class Ground : MonoBehaviour
             SetBlock(new Vector2Int(x, y-1), 0); SetBlock(new Vector2Int(x, y-2), 0);
             SetBlock(new Vector2Int(x-1, y-1), 0); SetBlock(new Vector2Int(x+1, y-1), 0);
             SetBlock(new Vector2Int(x, y), 0);
+            var im = new GameObject("IronMan");
+            im.transform.position = new Vector2(-2.8f + x * 0.4f, -3.8f + y * 0.4f);
+            im.AddComponent<IronMan>();
+            AudioManager.Play("ironMan_voice");
             return;
         }
         // T-shape up
@@ -351,6 +367,10 @@ public class Ground : MonoBehaviour
             SetBlock(new Vector2Int(x, y+1), 0); SetBlock(new Vector2Int(x, y+2), 0);
             SetBlock(new Vector2Int(x-1, y+1), 0); SetBlock(new Vector2Int(x+1, y+1), 0);
             SetBlock(new Vector2Int(x, y), 0);
+            var im = new GameObject("IronMan");
+            im.transform.position = new Vector2(-2.8f + x * 0.4f, -3.8f + y * 0.4f);
+            im.AddComponent<IronMan>();
+            AudioManager.Play("ironMan_voice");
             return;
         }
         // T-shape right
@@ -361,6 +381,10 @@ public class Ground : MonoBehaviour
             SetBlock(new Vector2Int(x+1, y), 0); SetBlock(new Vector2Int(x+2, y), 0);
             SetBlock(new Vector2Int(x+1, y+1), 0); SetBlock(new Vector2Int(x+1, y-1), 0);
             SetBlock(new Vector2Int(x, y), 0);
+            var im = new GameObject("IronMan");
+            im.transform.position = new Vector2(-2.8f + x * 0.4f, -3.8f + y * 0.4f);
+            im.AddComponent<IronMan>();
+            AudioManager.Play("ironMan_voice");
             return;
         }
         // T-shape left
@@ -371,7 +395,11 @@ public class Ground : MonoBehaviour
             SetBlock(new Vector2Int(x-1, y), 0); SetBlock(new Vector2Int(x-2, y), 0);
             SetBlock(new Vector2Int(x-1, y+1), 0); SetBlock(new Vector2Int(x-1, y-1), 0);
             SetBlock(new Vector2Int(x, y), 0);
-        }
+            var im = new GameObject("IronMan");
+            im.transform.position = new Vector2(-2.8f + x * 0.4f, -3.8f + y * 0.4f);
+            im.AddComponent<IronMan>();
+            AudioManager.Play("ironMan_voice");
+            return;
     }
 
     // --- id=17↔49: Stone brick ↔ Mossy ---
