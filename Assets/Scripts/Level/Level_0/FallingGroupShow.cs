@@ -10,6 +10,12 @@ public class FallingGroupShow : MonoBehaviour
     public GroupTypes Type { get; private set; }
     public Rotations Rotate { get; private set; }
     
+    // APK-style SmoothDamp for rotation/move animation
+    private Vector3[] _targets = new Vector3[4];
+    private Vector3[] _velocities = new Vector3[4];
+    private const float SMOOTH_TIME = 0.05f;
+    private bool _initialized = false;
+    
     private static Sprite[] _blockSprites;
     private static Sprite GetSprite(int id)
     {
@@ -38,10 +44,17 @@ public class FallingGroupShow : MonoBehaviour
     public void Show(GroupTypes type, Rotations rotation)
     {
         int[,,] dat = groupDic[type];
+        float bs = Frame.instance.blockSize;
         for (int i = 0; i < 4; i++)
         {
-            Blocks[i].transform.localPosition = new Vector3(dat[(int)rotation, i, 0] * Frame.instance.blockSize, dat[(int)rotation, i, 1] * Frame.instance.blockSize);
+            _targets[i] = new Vector3(dat[(int)rotation, i, 0] * bs, dat[(int)rotation, i, 1] * bs);
+            if (!_initialized)
+            {
+                Blocks[i].transform.localPosition = _targets[i];
+                _velocities[i] = Vector3.zero;
+            }
         }
+        _initialized = true;
     }
 
     public void SetType(GroupTypes t)
@@ -68,6 +81,17 @@ public class FallingGroupShow : MonoBehaviour
         for(int i = 0;i < 4; i++)
         {
             Blocks[i]=transform.GetChild(i).gameObject;
+        }
+    }
+
+    private void Update()
+    {
+        // APK SmoothDamp: smooth rotation/move animation
+        if (!_initialized) return;
+        for (int i = 0; i < 4; i++)
+        {
+            Blocks[i].transform.localPosition = Vector3.SmoothDamp(
+                Blocks[i].transform.localPosition, _targets[i], ref _velocities[i], SMOOTH_TIME);
         }
     }
 }

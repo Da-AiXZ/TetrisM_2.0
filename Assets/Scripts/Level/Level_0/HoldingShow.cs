@@ -17,5 +17,7 @@ public class HoldingShow : MonoBehaviour
     private void Hold()
     {
         show.Show(fb.Holding, FallingBlock.Rotations.Zero);
+        int[] defaultIDs = { 3, 3, 3, 3 };
+        show.SetBlockSprites(defaultIDs);
     }
 }

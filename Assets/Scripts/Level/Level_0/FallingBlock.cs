@@ -466,17 +466,12 @@ public class FallingBlock : MonoBehaviour
         return res;
     }
 
-    private void SettingChange(Dictionary<string, int> values)
-    {
-        // Tick-based system uses const values; DAS/ARR settings are no longer applicable
-        // SPEED, SOFT_DROP, MOVE_REPEAT are compile-time constants
-    }
+    // SettingChange removed (APK has no settings)
 
     private void Start()
     {
         Reload();
-        Settings.settingChange += SettingChange;
-        SettingChange(Settings.values);
+        // Settings removed (APK has no settings menu)
     }
 
     private void OnDestroy()
@@ -663,6 +658,9 @@ public class FallingBlock : MonoBehaviour
         return (Rotations)(((int)rotation + direction) % 4);
     }
 
+    public delegate void GameOverCall();
+    public static event GameOverCall OnGameOver;
+
     private bool Move(Vector2Int move,bool set)
     {
         bool fit;
@@ -681,6 +679,18 @@ public class FallingBlock : MonoBehaviour
         else if(set)
         {
             SetBlock(Pos, Type, Rotation, BlockID);
+            // APK GameOver: if any block landed above y=19 (top line)
+            int[,,] dat = groupDic[Type];
+            for (int i = 0; i < 4; i++)
+            {
+                int by = dat[(int)Rotation, i, 1] + Pos.y;
+                if (by >= Frame.ySize)
+                {
+                    OnGameOver?.Invoke();
+                    Debug.Log("Game Over - block above top line");
+                    return false;
+                }
+            }
             Reload();
             return false;
         }
