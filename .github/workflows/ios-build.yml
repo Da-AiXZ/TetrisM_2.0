@@ -5,37 +5,27 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-latest
+    runs-on: macos-13
     timeout-minutes: 45
-    env:
-      UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-      UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-      UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Unity Hub
-        run: brew install unity-hub
-
-      - name: Install Unity Editor (x86_64 via Rosetta2)
-        run: |
-          /Applications/Unity\ Hub.app/Contents/MacOS/Unity\ Hub -- --headless install \
-            --version 2021.2.7f1 \
-            --changeset 6bd9e232123f \
-            --module ios \
-            --architecture x86_64 \
-            --childModules
-
       - name: Build Unity (Xcode project)
-        run: |
-          UNITY="/Applications/Unity/Hub/Editor/2021.2.7f1/Unity.app/Contents/MacOS/Unity"
-          "$UNITY" -batchmode -quit -projectPath "$PWD" -buildTarget iOS -executeMethod IOSBuilder.Build -logFile -
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          targetPlatform: iOS
+          unityVersion: 2021.2.7f1
+          buildMethod: IOSBuilder.Build
 
       - name: Build unsigned IPA
         run: |
           XCODEPROJ=$(find build -name 'Unity-iPhone.xcodeproj' -type d 2>/dev/null | head -1)
-          if [ -z "$XCODEPROJ" ]; then echo "ERROR: No xcodeproj found"; exit 1; fi
+          if [ -z "$XCODEPROJ" ]; then echo "ERROR: No xcodeproj"; exit 1; fi
           cd "$(dirname "$XCODEPROJ")"
           xcodebuild -project Unity-iPhone.xcodeproj -scheme Unity-iPhone -configuration Release -sdk iphoneos -archivePath build/Unity-iPhone.xcarchive archive CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO DEVELOPMENT_TEAM=""
           mkdir -p Payload
