@@ -384,7 +384,7 @@ public class FallingBlock : MonoBehaviour
     public GroupTypes Holding = GroupTypes.I;
     public bool isHolding = false;
     public bool couldHold = true;
-    public int DAS=167, ARR=33,ARR_down=17;
+    public int DAS=200, ARR=200,ARR_down=100;
 
     public void Reload()
     {

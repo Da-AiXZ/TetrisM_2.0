@@ -19,7 +19,7 @@ public class Ground : MonoBehaviour
             var all = Resources.LoadAll<Sprite>("Sprites/Blocks");
             _loadedSprites = all;
         }
-        string name = $"Blocks_{id - 1}";
+        string name = $"Blocks_{id}";
         foreach (var s in _loadedSprites)
         {
             if (s.name == name) return s;
@@ -196,17 +196,14 @@ public class Ground : MonoBehaviour
             }
             return;
         }
-        if(id<0||id> blockPrefabs.Length)
-        {
-            Debug.LogError("Index is out of range!");
-            return;
-        }
         if (pos.x < 0 || pos.y < 0 || pos.x >= Frame.xSize || pos.y >= Frame.ySize)
         {
             Debug.LogWarning("Pos is out of range!");
             return;
         }
-        Blocks[pos.x, pos.y] = Instantiate(blockPrefabs[id]).GetComponent<Block>();
+        // Use prefab index1 for high block IDs; sprite comes from GetBlockSprite(id)
+        int prefabIdx = (id >= 0 && id < blockPrefabs.Length) ? id : 1;
+        Blocks[pos.x, pos.y] = Instantiate(blockPrefabs[prefabIdx]).GetComponent<Block>();
         Blocks[pos.x, pos.y].transform.SetParent(transform, false);
         Blocks[pos.x, pos.y].Init(new Vector2Int(pos.x, pos.y),this);
         Sprite s = GetBlockSprite(id);
