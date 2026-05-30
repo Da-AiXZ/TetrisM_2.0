@@ -18,11 +18,16 @@ public class WaitingShow : MonoBehaviour
 
     private void Reload()
     {
-        // Only show if this preview slot exists in waiting list
         if (id < fb.waiting.Count)
         {
             show.Show(fb.waiting[id], FallingBlock.Rotations.Zero);
-            // Use visible default block texture (id=3=dirt) so preview shows real textures, not red
+            int[] defaultIDs = { 3, 3, 3, 3 };
+            show.SetBlockSprites(defaultIDs);
+        }
+        else if (fb.waiting.Count > 0)
+        {
+            // Edge case: show last available if slot beyond list
+            show.Show(fb.waiting[fb.waiting.Count - 1], FallingBlock.Rotations.Zero);
             int[] defaultIDs = { 3, 3, 3, 3 };
             show.SetBlockSprites(defaultIDs);
         }

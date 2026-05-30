@@ -391,6 +391,9 @@ public class FallingBlock : MonoBehaviour
     private const int SOFT_DROP = 5;    // 5 ticks = 100ms soft drop
     private const int MOVE_REPEAT = 10; // 10 ticks = 200ms left/right repeat
 
+    // Track previous block ID for TNT chain (APK: FallDown.Start())
+    private int _prevBlockID = 0;
+
     public void Reload()
     {
         couldHold = true;
@@ -400,39 +403,58 @@ public class FallingBlock : MonoBehaviour
         Type = GetOneFromWaiting();
         Rotation = Rotations.Zero;
         
-        // APK: FallDown.Start() randomizes Minecraft block IDs for each sub-block
-        // Range A (50%): id=1-22, excl0,4,7,12,13,14,57; if id>=18→+36
-        // Range B (50%): id=18-53, excl4,7,13,14,49
-        int GetRandomBlockID()
+        // APK exact logic: each sub-block independently randomized
+        // num = Random(0,100); if <1 → memory; if <30 && prev was TNT → trigger; else → random
+        for (int i = 0; i < 4; i++)
         {
+            int num = Random.Range(0, 100);
             int id;
-            if (Random.Range(0, 2) == 0)
+            
+            if (num < 1)
             {
-                do { id = Random.Range(1, 23); }
-                while (id == 0 || id == 4 || id == 7 || id == 12 || id == 13 || id == 14 || id == 57);
-                if (id >= 18) id += 36;
+                // 1% chance: memory block (only if none active)
+                if (!hadMemoryBlockThisRound)
+                {
+                    id = 12;
+                    hadMemoryBlockThisRound = true;
+                }
+                else
+                {
+                    id = GetRandomBlockID();
+                }
+            }
+            else if (num < 30 && _prevBlockID == 1)
+            {
+                // 29% chance: TNT chain trigger blocks
+                int r2 = Random.Range(0, 3);
+                id = (r2 == 0) ? 56 : (r2 == 1) ? 2 : 15; // lava, redstone, target
             }
             else
             {
-                do { id = Random.Range(18, 54); }
-                while (id == 4 || id == 7 || id == 13 || id == 14 || id == 49);
+                id = GetRandomBlockID();
             }
-            return id;
+            
+            BlockID[i] = id;
+            _prevBlockID = id;
         }
         
-        int baseID = GetRandomBlockID();
-        // APK: TNT chain - if previous block was TNT(1), high chance of trigger blocks
-        // This is handled in APK's FallDown.Start(); simplified here
-        BlockID = new int[4] { baseID, baseID, baseID, baseID };
-        
-        // APK: ~1% chance of memory block per sub-block
-        for (int i = 0; i < 4 && !hadMemoryBlockThisRound; i++)
+        int GetRandomBlockID()
         {
-            if (Random.Range(1, 101) == 3)
+            // APK: 50% range A, 50% range B
+            if (Random.Range(0, 2) == 0)
             {
-                BlockID[i] = 12;
-                hadMemoryBlockThisRound = true;
-                break;
+                int id;
+                do { id = Random.Range(1, 23); }
+                while (id == 0 || id == 4 || id == 7 || id == 12 || id == 13 || id == 14 || id == 57);
+                if (id >= 18) id += 36;
+                return id;
+            }
+            else
+            {
+                int id;
+                do { id = Random.Range(18, 54); }
+                while (id == 4 || id == 7 || id == 13 || id == 14 || id == 49);
+                return id;
             }
         }
 
@@ -665,7 +687,6 @@ public class FallingBlock : MonoBehaviour
     {
         bool fit;
 
-        // Crush glass below when moving down
         if (move == Vector2Int.down)
             CrushGlass(Pos, Type, Rotation);
 
@@ -679,18 +700,17 @@ public class FallingBlock : MonoBehaviour
         else if(set)
         {
             SetBlock(Pos, Type, Rotation, BlockID);
-            // APK GameOver: if any block landed above y=19 (top line)
+            // APK GameOver: check AFTER placing, don't block Reload
             int[,,] dat = groupDic[Type];
+            bool gameOver = false;
             for (int i = 0; i < 4; i++)
             {
                 int by = dat[(int)Rotation, i, 1] + Pos.y;
                 if (by >= Frame.ySize)
-                {
-                    OnGameOver?.Invoke();
-                    Debug.Log("Game Over - block above top line");
-                    return false;
-                }
+                    gameOver = true;
             }
+            if (gameOver)
+                OnGameOver?.Invoke();
             Reload();
             return false;
         }
@@ -739,8 +759,8 @@ public class FallingBlock : MonoBehaviour
         {
             Vector2Int blockPos = new(dat[(int)rotation, i, 0] + pos.x, dat[(int)rotation, i, 1] + pos.y);
             int id = blockID[i];
-            // Water(58) and lava(56): skip solid block; fluid system handles them (batch2)
-            if (id == 58 || id == 56)
+            // Water(58) and lava(56): place as normal blocks for now; fluid system in batch2
+            if (false && (id == 58 || id == 56))
             {
                 Ground.Instance.SetBlock(blockPos, 0);
                 continue;
@@ -758,8 +778,8 @@ public class FallingBlock : MonoBehaviour
             int idAt = Ground.Instance.GetBlockID(blockPos);
             if (idAt > 0)
             {
-                // Pass through water(58) and lava(56)
-                if (idAt == 58 || idAt == 56) continue;
+                // Water/lava: treat as solid for now (batch2 adds pass-through)
+                if (false && (idAt == 58 || idAt == 56)) continue;
                 // Crush glass(5)
                 if (idAt == 5)
                 {
