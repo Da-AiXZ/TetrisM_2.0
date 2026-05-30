@@ -9,6 +9,30 @@ public class FallingGroupShow : MonoBehaviour
     public GameObject[] Blocks { get; private set; }
     public GroupTypes Type { get; private set; }
     public Rotations Rotate { get; private set; }
+    
+    private static Sprite[] _blockSprites;
+    private static Sprite GetSprite(int id)
+    {
+        if (_blockSprites == null)
+            _blockSprites = Resources.LoadAll<Sprite>("Sprites/Blocks");
+        string name = $"Blocks_{id}";
+        foreach (var s in _blockSprites)
+            if (s.name == name) return s;
+        return null;
+    }
+
+    public void SetBlockSprites(int[] blockIDs)
+    {
+        for (int i = 0; i < 4 && i < blockIDs.Length; i++)
+        {
+            var sr = Blocks[i].GetComponent<SpriteRenderer>();
+            if (sr != null)
+            {
+                var sp = GetSprite(blockIDs[i]);
+                if (sp != null) sr.sprite = sp;
+            }
+        }
+    }
 
     public void Show(GroupTypes type, Rotations rotation)
     {

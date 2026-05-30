@@ -4,7 +4,6 @@ using System.Runtime.CompilerServices;
 using UnityEngine;
 using static FallingGroupShow;
 using static InputManager;
-using static Unity.Burst.Intrinsics.X86.Avx;
 
 public class FallingBlock : MonoBehaviour
 {
@@ -384,33 +383,36 @@ public class FallingBlock : MonoBehaviour
     public GroupTypes Holding = GroupTypes.I;
     public bool isHolding = false;
     public bool couldHold = true;
-    public int DAS=200, ARR=200,ARR_down=100;
+    // Tick-based movement (APK system: FixedUpdate = 50Hz = 20ms per tick)
+    private int fallTick = 0;
+    private int moveTick = 0;
+    private const int SPEED = 50;       // 50 ticks = 1.0s per fall
+    private const int SOFT_DROP = 5;    // 5 ticks = 100ms soft drop
+    private const int MOVE_REPEAT = 10; // 10 ticks = 200ms left/right repeat
 
     public void Reload()
     {
         couldHold = true;
         Pos =new Vector2Int(3, 18);
-        timmer = fallingTime;
+        fallTick = 0;
+        moveTick = 0;
         Type = GetOneFromWaiting();
         Rotation = Rotations.Zero;
         
-        // Sprite IDs based on APK reverse engineering
-        // I(diamond)=56, O(gold)=55, L(sand)=58, J(wood)=49, T(stone)=17, Z(brick)=18, ZM(dirt)=19
+        // APK: FallDown.Start() assigns random Minecraft block IDs
+        // ID range 1-22 (excl 0,4,7,12,13,14,57) or 18-52 (excl 4,7,13,14,49)
+        // For simplicity, map each Tetris shape to a distinct Minecraft block ID
         int[] typeSprites = { 56, 55, 58, 49, 17, 18, 19 };
         int baseID = typeSprites[(int)Type];
         BlockID = new int[4] { baseID, baseID, baseID, baseID };
 
         transform.localPosition = Frame.instance.GetPosV2(Pos);
         fallingGroupShow.SetType(Type);
+        fallingGroupShow.SetBlockSprites(BlockID);
         fallingGroupShow.SetRotation(Rotation);
 
         OnReload?.Invoke();
     }
-
-    private const float fallingTime = 1;
-    private float timmer = fallingTime;
-    private float downCold = 0;
-    private float moveCold = 0;
 
     private GroupTypes GetOneFromWaiting()
     {
@@ -455,46 +457,8 @@ public class FallingBlock : MonoBehaviour
 
     private void Update()
     {
-        timmer -= Time.deltaTime;
-        if (timmer < 0)
-        {
-            timmer = fallingTime;
-            Move(Vector2Int.down, true);
-        }
-
-        if (moveCold > 0)//left and right handel
-        {
-            if (GetKey(Key.left)||GetKey(Key.right))
-            {
-                moveCold -= Time.deltaTime;
-            }
-            else
-            {
-                moveCold = 0;
-            }
-        }
-        if (GetKeyDown(Key.left) && !GetKeyDown(Key.right))
-        {
-            Move(Vector2Int.left, false);
-            moveCold = DAS/1000f;
-        }
-        if (!GetKeyDown(Key.left)&& GetKeyDown(Key.right))
-        {
-            Move(Vector2Int.right, false);
-            moveCold = DAS / 1000f;
-        }
-        if (GetKey(Key.left) && !GetKey(Key.right)&& moveCold <= 0)
-        {
-            Move(Vector2Int.left, false);
-            moveCold = ARR / 1000f;
-        }
-        if (!GetKey(Key.left) && GetKey(Key.right) && moveCold <= 0)
-        {
-            Move(Vector2Int.right, false);
-            moveCold = ARR / 1000f;
-        }
-
-        if (!GetKey(Key.x) && GetKeyDown(Key.b) && !GetKey(Key.y))//rotate handel
+        // Rotation and hard-drop / hold (frame-independent, handled in Update)
+        if (!GetKey(Key.x) && GetKeyDown(Key.b) && !GetKey(Key.y))
         {
             bool couldRotate;
             Vector2Int offset;
@@ -518,7 +482,7 @@ public class FallingBlock : MonoBehaviour
                 Rotation = rotation;
             }
         }
-        if (!GetKey(Key.x) && !GetKey(Key.b)&& GetKeyDown(Key.y))
+        if (!GetKey(Key.x) && !GetKey(Key.b) && GetKeyDown(Key.y))
         {
             bool couldRotate;
             Vector2Int offset;
@@ -528,26 +492,6 @@ public class FallingBlock : MonoBehaviour
             {
                 Pos += offset;
                 Rotation = rotation;
-            }
-        }
-
-        if (downCold > 0)//Dwon Handel
-        {
-            if (!GetKey(Key.down))
-            {
-                downCold = 0;
-            }
-            else
-            {
-                downCold -= Time.deltaTime;
-            }
-        }
-        if (GetKey(Key.down)&& downCold <= 0)
-        {
-            downCold = ARR_down / 1000f;
-            if (Move(Vector2Int.down, false))
-            {
-                timmer = fallingTime;
             }
         }
 
@@ -562,6 +506,43 @@ public class FallingBlock : MonoBehaviour
         }
 
         transform.localPosition = Frame.instance.GetPosV2(Pos);
+    }
+
+    private void FixedUpdate()
+    {
+        // APK tick-based movement: FixedUpdate runs at 50Hz (20ms per tick)
+        fallTick++;
+        if (fallTick >= SPEED)
+        {
+            fallTick = 0;
+            Move(Vector2Int.down, true);
+        }
+        // Soft drop: hold down/s to fall faster
+        if ((GetKey(Key.down) || GetKey(Key.s)) && fallTick >= SOFT_DROP)
+        {
+            fallTick = 0;
+            Move(Vector2Int.down, true);
+        }
+
+        // Left/right: immediate first move, then repeat every MOVE_REPEAT ticks
+        int dir = 0;
+        if (GetKey(Key.left) || GetKey(Key.a)) dir = -1;
+        if (GetKey(Key.right) || GetKey(Key.d)) dir = (dir != 0) ? 0 : 1;
+
+        if (dir == 0)
+        {
+            moveTick = 100; // reset: next press moves immediately
+        }
+        else
+        {
+            moveTick++;
+            if (moveTick >= MOVE_REPEAT)
+            {
+                moveTick = 0;
+                if (dir == -1) Move(Vector2Int.left, false);
+                else Move(Vector2Int.right, false);
+            }
+        }
     }
 
     private (bool,Vector2Int,Rotations) RotateRight()
