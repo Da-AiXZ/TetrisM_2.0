@@ -438,9 +438,8 @@ public class FallingBlock : MonoBehaviour
 
     private void SettingChange(Dictionary<string, int> values)
     {
-        DAS = values["DAS"];
-        ARR = values["ARR"];
-        ARR_down = values["ARRDown"];
+        // Tick-based system uses const values; DAS/ARR settings are no longer applicable
+        // SPEED, SOFT_DROP, MOVE_REPEAT are compile-time constants
     }
 
     private void Start()
@@ -517,8 +516,8 @@ public class FallingBlock : MonoBehaviour
             fallTick = 0;
             Move(Vector2Int.down, true);
         }
-        // Soft drop: hold down/s to fall faster
-        if ((GetKey(Key.down) || GetKey(Key.s)) && fallTick >= SOFT_DROP)
+        // Soft drop: hold down to fall faster
+        if (GetKey(Key.down) && fallTick >= SOFT_DROP)
         {
             fallTick = 0;
             Move(Vector2Int.down, true);
@@ -526,8 +525,8 @@ public class FallingBlock : MonoBehaviour
 
         // Left/right: immediate first move, then repeat every MOVE_REPEAT ticks
         int dir = 0;
-        if (GetKey(Key.left) || GetKey(Key.a)) dir = -1;
-        if (GetKey(Key.right) || GetKey(Key.d)) dir = (dir != 0) ? 0 : 1;
+        if (GetKey(Key.left)) dir = -1;
+        if (GetKey(Key.right)) dir = (dir != 0) ? 0 : 1;
 
         if (dir == 0)
         {
