@@ -36,7 +36,7 @@ jobs:
             -projectPath "$PWD" \
             -buildTarget iOS \
             -executeMethod IOSBuilder.Build \
-            -logFile /dev/stdout
+            -logFile -
 
       - name: Build unsigned IPA
         run: |
