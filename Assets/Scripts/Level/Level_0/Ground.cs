@@ -400,6 +400,7 @@ public class Ground : MonoBehaviour
             im.AddComponent<IronMan>();
             AudioManager.Play("ironMan_voice");
             return;
+        }
     }
 
     // --- id=17↔49: Stone brick ↔ Mossy ---
@@ -615,4 +616,4 @@ public class Ground : MonoBehaviour
         Sprite s = GetBlockSprite(id);
         if (s != null) Blocks[pos.x, pos.y].SetSprite(s);
     }
-}}
+}
