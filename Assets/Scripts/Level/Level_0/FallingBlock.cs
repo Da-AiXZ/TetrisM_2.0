@@ -476,7 +476,7 @@ public class FallingBlock : MonoBehaviour
 
     private void OnDestroy()
     {
-        Settings.settingChange -= SettingChange;
+        // Settings removed
     }
 
     private void Update()
