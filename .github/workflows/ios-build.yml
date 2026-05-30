@@ -19,7 +19,7 @@ jobs:
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
           targetPlatform: iOS
-          unityVersion: 2021.2.7f1c1
+          unityVersion: 2021.2.7f1
           buildMethod: IOSBuilder.Build
 
       - name: Build unsigned IPA
