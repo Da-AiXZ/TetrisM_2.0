@@ -383,6 +383,7 @@ public class FallingBlock : MonoBehaviour
     public GroupTypes Holding = GroupTypes.I;
     public bool isHolding = false;
     public bool couldHold = true;
+    private bool hadMemoryBlockThisRound = false;
     // Tick-based movement (APK system: FixedUpdate = 50Hz = 20ms per tick)
     private int fallTick = 0;
     private int moveTick = 0;
@@ -399,12 +400,41 @@ public class FallingBlock : MonoBehaviour
         Type = GetOneFromWaiting();
         Rotation = Rotations.Zero;
         
-        // APK: FallDown.Start() assigns random Minecraft block IDs
-        // ID range 1-22 (excl 0,4,7,12,13,14,57) or 18-52 (excl 4,7,13,14,49)
-        // For simplicity, map each Tetris shape to a distinct Minecraft block ID
-        int[] typeSprites = { 56, 55, 58, 49, 17, 18, 19 };
-        int baseID = typeSprites[(int)Type];
+        // APK: FallDown.Start() randomizes Minecraft block IDs for each sub-block
+        // Range A (50%): id=1-22, excl0,4,7,12,13,14,57; if id>=18→+36
+        // Range B (50%): id=18-53, excl4,7,13,14,49
+        int GetRandomBlockID()
+        {
+            int id;
+            if (Random.Range(0, 2) == 0)
+            {
+                do { id = Random.Range(1, 23); }
+                while (id == 0 || id == 4 || id == 7 || id == 12 || id == 13 || id == 14 || id == 57);
+                if (id >= 18) id += 36;
+            }
+            else
+            {
+                do { id = Random.Range(18, 54); }
+                while (id == 4 || id == 7 || id == 13 || id == 14 || id == 49);
+            }
+            return id;
+        }
+        
+        int baseID = GetRandomBlockID();
+        // APK: TNT chain - if previous block was TNT(1), high chance of trigger blocks
+        // This is handled in APK's FallDown.Start(); simplified here
         BlockID = new int[4] { baseID, baseID, baseID, baseID };
+        
+        // APK: ~1% chance of memory block per sub-block
+        for (int i = 0; i < 4 && !hadMemoryBlockThisRound; i++)
+        {
+            if (Random.Range(1, 101) == 3)
+            {
+                BlockID[i] = 12;
+                hadMemoryBlockThisRound = true;
+                break;
+            }
+        }
 
         transform.localPosition = Frame.instance.GetPosV2(Pos);
         fallingGroupShow.SetType(Type);
