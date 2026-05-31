@@ -7,6 +7,11 @@ public class IOSBuilder
     public static void Build()
     {
         IOSBuildSetup.Configure();
+        
+        // Extract UGUI GUIDs before build
+        Debug.Log("[IOSBuilder] Extracting UGUI GUIDs...");
+        ExtractUGUIGUID.Extract();
+        
         var scenes = EditorBuildSettings.scenes
             .Where(s => s.enabled)
             .Select(s => s.path)
