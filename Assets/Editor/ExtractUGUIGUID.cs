@@ -7,38 +7,40 @@ public class ExtractUGUIGUID
 {
     public static void Extract()
     {
-        // Test each component separately
-        TestComponent<Text>("Text");
-        TestComponent<Image>("Image");
-        TestComponent<RawImage>("RawImage");
-        // Button is ambiguous - skip
+        var dir = "Assets/Editor/";
+        if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
+        // Create separate prefabs for each component type
+        ExtractOne("Text", (go) => go.AddComponent<Text>());
+        ExtractOne("Image", (go) => go.AddComponent<Image>());
+        ExtractOne("RawImage", (go) => go.AddComponent<RawImage>());
+        // Skip Button - project has its own Button class
     }
-    
-    static void TestComponent<T>(string name) where T : Component
+
+    static void ExtractOne(string name, System.Action<GameObject> addComp)
     {
         var go = new GameObject("_probe_" + name);
-        var comp = go.AddComponent<T>();
-        var dir = "Assets/Editor/";
-        var path = dir + "_probe_" + name + ".prefab";
+        addComp(go);
+        var path = "Assets/Editor/_probe_" + name + ".prefab";
         bool ok;
         PrefabUtility.SaveAsPrefabAsset(go, path, out ok);
         Object.DestroyImmediate(go);
         AssetDatabase.Refresh();
-        
+
         if (ok)
         {
             var content = File.ReadAllText(path);
-            var match = System.Text.RegularExpressions.Regex.Match(content, 
-                @"m_Script:\s*\{fileID:\s*([\d-]+),\s*guid:\s*([a-f0-9]+),\s*type:\s*(\d+)\}");
-            if (match.Success)
-                Debug.Log($"[GUID_{name}] fileID={match.Groups[1].Value} guid={match.Groups[2].Value}");
-            else
-                Debug.LogWarning($"[GUID_{name}] No m_Script found in prefab");
+            var matches = System.Text.RegularExpressions.Regex.Matches(content,
+                @"m_Script:\s*\{fileID:\s*(-?\d+),\s*guid:\s*([a-f0-9]+),\s*type:\s*(\d+)\}");
+            foreach (System.Text.RegularExpressions.Match m in matches)
+            {
+                Debug.Log($"[UGUI_PROBE] {name}: fileID={m.Groups[1].Value} guid={m.Groups[2].Value} type={m.Groups[3].Value}");
+            }
             AssetDatabase.DeleteAsset(path);
         }
         else
         {
-            Debug.LogError($"[GUID_{name}] Failed to save prefab");
+            Debug.LogError($"[UGUI_PROBE] Failed to save prefab for {name}");
         }
     }
 }
