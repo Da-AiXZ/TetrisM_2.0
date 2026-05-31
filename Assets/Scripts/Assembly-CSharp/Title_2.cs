@@ -32,7 +32,7 @@ public class Title_2 : MonoBehaviour
 			}
 			s.color = new Color(1f, 1f, 1f, a);
 		}
-		if (timmer >= time && Input.anyKey)
+		if (timmer >= time && (Input.anyKey || Input.touchCount > 0 || Input.GetMouseButtonDown(0)))
 		{
 			GameObject.Find("Title").GetComponent<Title>().isDown = true;
 		}

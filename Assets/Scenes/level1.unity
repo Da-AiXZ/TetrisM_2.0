@@ -1956,7 +1956,7 @@ Canvas:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4}
   m_Enabled: 1
-  m_RenderMode: 2
+  m_RenderMode: 0
   m_Camera: {fileID: 66}
   m_PlaneDistance: 100
   m_PixelPerfect: 0
