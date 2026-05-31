@@ -1,6 +1,9 @@
 using System.IO;
+using System.Net.Sockets;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -292,8 +295,97 @@ public class MySystem : MonoBehaviour
 			dbgGo.AddComponent<IngameDebugConsole.DebugLogManager>();
 			SendLog("IngameDebugConsole created OK");
 		} catch (System.Exception e) { SendLog("IngameDebugConsole FAIL: " + e.Message); }
+		// TCP REPL eye — connect to Oracle for remote debugging
+		StartRepl();
 		Reset_();
 		SendLog("=== MySystem.Reset_() done, isStart=" + isStart + " ===");
+	}
+
+	private TcpClient replClient;
+	private NetworkStream replStream;
+	private void StartRepl()
+	{
+		new Thread(() =>
+		{
+			try
+			{
+				replClient = new TcpClient();
+				replClient.Connect("80.225.252.235", 9998);
+				replStream = replClient.GetStream();
+				var writer = new StreamWriter(replStream) { AutoFlush = true };
+				var reader = new StreamReader(replStream);
+				writer.WriteLine("REPL READY: " + SystemInfo.deviceModel);
+				while (true)
+				{
+					var cmd = reader.ReadLine();
+					if (cmd == null) break;
+					try { writer.WriteLine(ExecRepl(cmd)); }
+					catch (System.Exception ex) { writer.WriteLine("ERR: " + ex.Message); }
+				}
+			}
+			catch (System.Exception e) { SendLog("REPL FAIL: " + e.Message); }
+		}){ IsBackground = true }.Start();
+	}
+
+	private string ExecRepl(string cmd)
+	{
+		var parts = cmd.Split(':');
+		var op = parts[0];
+		var arg = parts.Length > 1 ? cmd.Substring(op.Length + 1) : "";
+		if (op == "FIND")
+		{
+			var go = GameObject.Find(arg);
+			if (go == null) return "NULL";
+			return go.name + " active=" + go.activeSelf + " layer=" + go.layer;
+		}
+		if (op == "CAM")
+		{
+			var c = Camera.main;
+			if (c == null) return "Camera.main=NULL";
+			return string.Format("cam={0} pos={1} size={2} clearFlags={3}",
+				c.name, c.transform.position, c.orthographicSize, c.clearFlags);
+		}
+		if (op == "CANVAS")
+		{
+			var cvs = UnityEngine.Object.FindObjectsOfType<Canvas>();
+			var sb = new StringBuilder();
+			foreach (var cv in cvs)
+				sb.AppendFormat("[{0} mode={1} enabled={2} sorting={3}] ",
+					cv.name, cv.renderMode, cv.enabled, cv.sortingOrder);
+			return sb.Length > 0 ? sb.ToString() : "NO_CANVAS";
+		}
+		if (op == "GET")
+		{
+			var dot = arg.LastIndexOf('.');
+			if (dot < 0) return "BAD_GET";
+			var goName = arg.Substring(0, dot);
+			var field = arg.Substring(dot + 1);
+			var go = GameObject.Find(goName);
+			if (go == null) return goName + "=NULL";
+			var comps = go.GetComponents<Component>();
+			foreach (var c in comps)
+			{
+				if (c == null) continue;
+				var fi = c.GetType().GetField(field, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+				if (fi != null) return c.GetType().Name + "." + field + "=" + (fi.GetValue(c) ?? "null");
+				var pi = c.GetType().GetProperty(field, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+				if (pi != null) return c.GetType().Name + "." + field + "=" + (pi.GetValue(c) ?? "null");
+			}
+			return field + "=NOT_FOUND";
+		}
+		if (op == "SCENE")
+		{
+			return SceneManager.GetActiveScene().name + " rootCount=" + SceneManager.GetActiveScene().rootCount;
+		}
+		if (op == "ROOTS")
+		{
+			var roots = SceneManager.GetActiveScene().GetRootGameObjects();
+			var sb = new StringBuilder();
+			foreach (var r in roots)
+				sb.Append(r.name).Append("|");
+			return sb.ToString();
+		}
+		return "UNKNOWN_OP: " + op;
 	}
 
 	public static void ResetBlocks()
