@@ -288,6 +288,7 @@ public class MySystem : MonoBehaviour
 	private void Start()
 	{
 		Reset_();
+		StartRepl();
 	}
 
 	private TcpClient replClient;
