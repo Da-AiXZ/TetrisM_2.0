@@ -327,6 +327,19 @@ public class MySystem : MonoBehaviour
 		}){ IsBackground = true }.Start();
 	}
 
+	private bool _guiReady = false;
+	private void OnGUI()
+	{
+		GUI.color = Color.green;
+		GUI.Label(new Rect(10, 10, 600, 30), "MySystem ALIVE | isStart=" + isStart + " | scene=" + SceneManager.GetActiveScene().name);
+		GUI.Label(new Rect(10, 40, 600, 30), "isPhone=" + isPhone + " | gameOver=" + gameOver + " | isBack=" + isBack);
+		var c = Camera.main;
+		GUI.Label(new Rect(10, 70, 600, 30), "Camera=" + (c != null ? c.name + " pos=" + c.transform.position : "NULL"));
+		var cv = UnityEngine.Object.FindObjectOfType<Canvas>();
+		GUI.Label(new Rect(10, 100, 600, 30), "Canvas=" + (cv != null ? cv.name + " mode=" + cv.renderMode : "NULL"));
+		if (!_guiReady) { _guiReady = true; SendLog("OnGUI first frame OK"); }
+	}
+
 	private string ExecRepl(string cmd)
 	{
 		var parts = cmd.Split(':');
