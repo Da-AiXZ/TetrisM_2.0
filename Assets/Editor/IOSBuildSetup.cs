@@ -10,10 +10,10 @@ public class IOSBuildSetup
         PlayerSettings.SetScriptingBackend(BuildTargetGroup.iOS, ScriptingImplementation.IL2CPP);
         PlayerSettings.iOS.targetOSVersionString = "15.0";
         PlayerSettings.iOS.targetDevice = iOSTargetDevice.iPhoneAndiPad;
-        PlayerSettings.allowedAutorotateToPortrait = true;
+        PlayerSettings.allowedAutorotateToPortrait = false;
         PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
-        PlayerSettings.allowedAutorotateToLandscapeLeft = false;
-        PlayerSettings.allowedAutorotateToLandscapeRight = false;
+        PlayerSettings.allowedAutorotateToLandscapeLeft = true;
+        PlayerSettings.allowedAutorotateToLandscapeRight = true;
         PlayerSettings.stripEngineCode = false;
         PlayerSettings.SetManagedStrippingLevel(BuildTargetGroup.iOS, ManagedStrippingLevel.Disabled);
         Debug.Log("[IOSBuildSetup] iOS configured.");
