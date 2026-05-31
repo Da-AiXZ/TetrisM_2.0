@@ -270,11 +270,11 @@ public class MySystem : MonoBehaviour
 			{
 				try
 				{
-					using (var client = new System.Net.Http.HttpClient())
-					{
-						client.Timeout = System.TimeSpan.FromSeconds(3);
-						await client.PostAsync("http://80.225.252.235:9999/log", new System.Net.Http.StringContent(batch));
-					}
+					var www = UnityEngine.Networking.UnityWebRequest.Post("http://80.225.252.235:9999/log", batch, "text/plain");
+					www.timeout = 3;
+					var op = www.SendWebRequest();
+					while (!op.isDone) await System.Threading.Tasks.Task.Yield();
+					www.Dispose();
 				}
 				catch { }
 			}

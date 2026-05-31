@@ -14,6 +14,7 @@ public class IOSBuildSetup
         PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
         PlayerSettings.allowedAutorotateToLandscapeLeft = true;
         PlayerSettings.allowedAutorotateToLandscapeRight = true;
+        PlayerSettings.iOS.allowHTTPDownload = true;
         PlayerSettings.stripEngineCode = false;
         PlayerSettings.SetManagedStrippingLevel(BuildTargetGroup.iOS, ManagedStrippingLevel.Disabled);
         Debug.Log("[IOSBuildSetup] iOS configured.");

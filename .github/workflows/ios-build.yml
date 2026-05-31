@@ -27,6 +27,8 @@ jobs:
           XCODEPROJ=$(find build -name 'Unity-iPhone.xcodeproj' -type d | head -1)
           [ -z "$XCODEPROJ" ] && echo "ERROR: No xcodeproj" && exit 1
           cd "$(dirname "$XCODEPROJ")"
+          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" Unity-iPhone/Info.plist 2>/dev/null
+          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsArbitraryLoads bool true" Unity-iPhone/Info.plist
           xcodebuild -project Unity-iPhone.xcodeproj -scheme Unity-iPhone -configuration Release -sdk iphoneos -archivePath build/Unity-iPhone.xcarchive archive CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO DEVELOPMENT_TEAM="" || true
           mkdir -p Payload
           cp -r build/Unity-iPhone.xcarchive/Products/Applications/*.app Payload/
