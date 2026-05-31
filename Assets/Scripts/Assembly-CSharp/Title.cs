@@ -32,7 +32,7 @@ public class Title : MonoBehaviour
 		}
 		else
 		{
-			MySystem.StartLoadScene("level0");
+			MySystem.StartLoadScene("level1");
 		}
 	}
 
