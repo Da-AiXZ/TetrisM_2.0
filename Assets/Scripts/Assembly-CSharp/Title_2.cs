@@ -32,7 +32,8 @@ public class Title_2 : MonoBehaviour
 			}
 			s.color = new Color(1f, 1f, 1f, a);
 		}
-		if (timmer >= time && Input.anyKey)
+		// iOS touch support: any touch = press any key
+		if (timmer >= time && (Input.anyKey || Input.touchCount > 0 || Input.GetMouseButtonDown(0)))
 		{
 			GameObject.Find("Title").GetComponent<Title>().isDown = true;
 		}
@@ -40,9 +41,6 @@ public class Title_2 : MonoBehaviour
 
 	private void Update()
 	{
-		if (Input.GetKeyDown(KeyCode.Escape))
-		{
-			Application.Quit();
-		}
+		// iOS: no Escape key, removed Application.Quit
 	}
 }
