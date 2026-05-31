@@ -311,7 +311,7 @@ public class MySystem : MonoBehaviour
 		}
 		if (Input.GetKeyDown(KeyCode.Escape))
 		{
-			Application.Quit();
+			// iOS: Application.Quit() not allowed
 		}
 		switch (buttonDownb[0])
 		{
