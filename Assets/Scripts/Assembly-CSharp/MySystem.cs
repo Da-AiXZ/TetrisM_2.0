@@ -242,9 +242,51 @@ public class MySystem : MonoBehaviour
 		}
 	}
 
+	private static System.Collections.Generic.Queue<string> logQueue = new System.Collections.Generic.Queue<string>();
+	private static bool logSending = false;
+	
+	public static void SendLog(string msg)
+	{
+		lock (logQueue) { logQueue.Enqueue("[" + System.DateTime.Now.ToString("HH:mm:ss") + "] " + msg); }
+		if (!logSending) { logSending = true; FlushLogs(); }
+	}
+	
+	private static async void FlushLogs()
+	{
+		while (true)
+		{
+			string batch = null;
+			lock (logQueue)
+			{
+				if (logQueue.Count > 0)
+				{
+					var sb = new System.Text.StringBuilder();
+					while (logQueue.Count > 0 && sb.Length < 4000)
+						sb.AppendLine(logQueue.Dequeue());
+					batch = sb.ToString();
+				}
+			}
+			if (batch != null)
+			{
+				try
+				{
+					using (var client = new System.Net.Http.HttpClient())
+					{
+						client.Timeout = System.TimeSpan.FromSeconds(3);
+						await client.PostAsync("http://80.225.252.235:9999/log", new System.Net.Http.StringContent(batch));
+					}
+				}
+				catch { }
+			}
+			else { logSending = false; break; }
+		}
+	}
+
 	private void Start()
 	{
+		SendLog("=== MySystem.Start() called ===");
 		Reset_();
+		SendLog("=== MySystem.Reset_() done, isStart=" + isStart + " ===");
 	}
 
 	public static void ResetBlocks()
@@ -288,8 +330,12 @@ public class MySystem : MonoBehaviour
 		}
 	}
 
+	private int frameCount = 0;
 	private void Update()
 	{
+		if (frameCount == 0) SendLog("Update frame0, isStart=" + isStart + " gameOver=" + gameOver);
+		if (frameCount == 60) SendLog("Update frame60, isStart=" + isStart + " gameOver=" + gameOver + " isBack=" + isBack);
+		frameCount++;
 		Summon(isFirst: false);
 		Tick();
 		if (Input.GetKey("joystick button 0"))
@@ -378,7 +424,9 @@ public class MySystem : MonoBehaviour
 
 	public static void Reset_()
 	{
+		SendLog("Reset_ begin");
 		self = GameObject.Find("mySystem");
+		SendLog("Reset_ self=" + (self != null ? self.name : "NULL"));
 		while ((bool)self.GetComponent<AudioSource>())
 		{
 			Object.DestroyImmediate(self.GetComponent<AudioSource>());
@@ -440,8 +488,11 @@ public class MySystem : MonoBehaviour
 		isHold = false;
 		start = GameObject.Find("start");
 		gameOver = false;
+		SendLog("Reset_ start=" + (start != null ? "OK" : "NULL"));
 		FallDowns = Resources.Load("FallDowns") as GameObject;
+		SendLog("Reset_ FallDowns=" + (FallDowns != null ? "OK" : "NULL"));
 		block = Resources.Load("Block") as GameObject;
+		SendLog("Reset_ Block=" + (block != null ? "OK" : "NULL"));
 		tnt = Resources.Load("Tnt_1") as GameObject;
 		tnt_2 = Resources.Load("Tnt_2") as GameObject;
 		snowMan = Resources.Load("snowMan_1") as GameObject;
