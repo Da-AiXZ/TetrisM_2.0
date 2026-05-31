@@ -287,18 +287,7 @@ public class MySystem : MonoBehaviour
 
 	private void Start()
 	{
-		SendLog("=== MySystem.Start() called ===");
-		// Create IngameDebugConsole
-		try {
-			var dbgGo = new GameObject("IngameDebugConsole");
-			UnityEngine.Object.DontDestroyOnLoad(dbgGo);
-			dbgGo.AddComponent<IngameDebugConsole.DebugLogManager>();
-			SendLog("IngameDebugConsole created OK");
-		} catch (System.Exception e) { SendLog("IngameDebugConsole FAIL: " + e.Message); }
-		// TCP REPL eye — connect to Oracle for remote debugging
-		StartRepl();
 		Reset_();
-		SendLog("=== MySystem.Reset_() done, isStart=" + isStart + " ===");
 	}
 
 	private TcpClient replClient;
