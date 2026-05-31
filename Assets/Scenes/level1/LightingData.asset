@@ -8,7 +8,7 @@ LightingDataAsset:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: LightingData
-  m_Scene: {fileID: 102900000, guid: da8959eadde8f484faf800a2fac2a43f, type: 3}
+  m_Scene: {fileID: 102900000, guid: 20d81185f68070f4f96457a9236c18c7, type: 3}
   m_Lightmaps: []
   m_AOTextures: []
   m_LightmapsCacheFiles: []

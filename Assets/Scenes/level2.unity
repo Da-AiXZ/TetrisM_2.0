@@ -87,7 +87,7 @@ LightmapSettings:
     m_ExportTrainingData: 0
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
-  m_LightingDataAsset: {fileID: 112000000, guid: f221c476083dc384c97cdbb5b5fc116e, type: 2}
+  m_LightingDataAsset: {fileID: 112000000, guid: b15a3a223c2fc9247a8e79717738c293, type: 2}
   m_LightingSettings: {fileID: 0}
 --- !u!196 &11
 NavMeshSettings:
@@ -346,7 +346,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
+  m_Script: {fileID: -619905303, guid: d3e719b59ab71ba3f6b398058c866280, type: 3}
   m_Name:
   m_EditorClassIdentifier:
   m_FirstSelected: {fileID: 0}
@@ -361,7 +361,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
+  m_Script: {fileID: 1077351063, guid: d3e719b59ab71ba3f6b398058c866280, type: 3}
   m_Name:
   m_EditorClassIdentifier:
   m_HorizontalAxis: Horizontal
@@ -380,7 +380,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 2}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dc42784cf147c0c48a680349fa168899, type: 3}
+  m_Script: {fileID: 1301386320, guid: d3e719b59ab71ba3f6b398058c866280, type: 3}
   m_Name:
   m_EditorClassIdentifier:
   m_IgnoreReversedGraphics: 1
@@ -397,7 +397,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 2}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
+  m_Script: {fileID: 1980459831, guid: d3e719b59ab71ba3f6b398058c866280, type: 3}
   m_Name:
   m_EditorClassIdentifier:
   m_UiScaleMode: 0
@@ -420,7 +420,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 4}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
+  m_Script: {fileID: 708705254, guid: d3e719b59ab71ba3f6b398058c866280, type: 3}
   m_Name:
   m_EditorClassIdentifier:
   m_Material: {fileID: 0}
@@ -432,7 +432,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_FontData:
-    m_Font: {fileID: 12800000, guid: 4d1ab35a69b52ee40b3d7dc8bcd17e1a, type: 3}
+    m_Font: {fileID: 12800000, guid: 31679a3fd18e37a43bb955088a8230c6, type: 3}
     m_FontSize: 154
     m_FontStyle: 0
     m_BestFit: 0
