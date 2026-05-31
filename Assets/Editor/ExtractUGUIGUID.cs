@@ -19,6 +19,6 @@ public class ExtractUGUIGUID
         var p = "Assets/Editor/_p_" + name + ".prefab";
         PrefabUtility.SaveAsPrefabAsset(go, p, out bool ok);
         Object.DestroyImmediate(go); AssetDatabase.Refresh();
-        if (ok) { foreach (var m in System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(p), @"m_Script:\s*\{fileID:\s*(-?\d+),\s*guid:\s*([a-f0-9]+)")) Debug.Log($"[PROBE] {name}: fid={m.Groups[1].Value} g={m.Groups[2].Value}"); AssetDatabase.DeleteAsset(p); }
+        if (ok) { foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(p), @"m_Script:\s*\{fileID:\s*(-?\d+),\s*guid:\s*([a-f0-9]+)")) Debug.Log($"[PROBE] {name}: fid={m.Groups[1].Value} g={m.Groups[2].Value}"); AssetDatabase.DeleteAsset(p); }
     }
 }
