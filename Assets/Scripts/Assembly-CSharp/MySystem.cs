@@ -471,7 +471,7 @@ public class MySystem : MonoBehaviour
 		score = 0;
 		GameObject.Find("Canvas").GetComponent<Score>()._Reset();
 		string text2 = RFileS("/key/", "key.txt", 1024);
-		Physics.autoSimulation = false;
+		Physics.simulationMode = SimulationMode.Script;
 		if (text2 != "error")
 		{
 			string[] array = text2.Split(',');
