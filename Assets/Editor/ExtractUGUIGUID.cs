@@ -7,16 +7,19 @@ public class ExtractUGUIGUID
 {
     public static void Extract()
     {
-        var go = new GameObject("_guid_extract_");
-        go.AddComponent<Text>();
-        go.AddComponent<Image>();
-        go.AddComponent<Button>();
-        go.AddComponent<RawImage>();
-        
+        // Test each component separately
+        TestComponent<Text>("Text");
+        TestComponent<Image>("Image");
+        TestComponent<RawImage>("RawImage");
+        // Button is ambiguous - skip
+    }
+    
+    static void TestComponent<T>(string name) where T : Component
+    {
+        var go = new GameObject("_probe_" + name);
+        var comp = go.AddComponent<T>();
         var dir = "Assets/Editor/";
-        var path = dir + "_guid_prefab.prefab";
-        if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
-        
+        var path = dir + "_probe_" + name + ".prefab";
         bool ok;
         PrefabUtility.SaveAsPrefabAsset(go, path, out ok);
         Object.DestroyImmediate(go);
@@ -25,17 +28,17 @@ public class ExtractUGUIGUID
         if (ok)
         {
             var content = File.ReadAllText(path);
-            var matches = System.Text.RegularExpressions.Regex.Matches(content, 
-                @"m_Script:\s*\{fileID:\s*(\d+),\s*guid:\s*([a-f0-9]+),\s*type:\s*(\d+)\}");
-            foreach (System.Text.RegularExpressions.Match m in matches)
-            {
-                Debug.Log($"[UGUI_GUID_FULL] fileID={m.Groups[1].Value} guid={m.Groups[2].Value} type={m.Groups[3].Value}");
-            }
+            var match = System.Text.RegularExpressions.Regex.Match(content, 
+                @"m_Script:\s*\{fileID:\s*([\d-]+),\s*guid:\s*([a-f0-9]+),\s*type:\s*(\d+)\}");
+            if (match.Success)
+                Debug.Log($"[GUID_{name}] fileID={match.Groups[1].Value} guid={match.Groups[2].Value}");
+            else
+                Debug.LogWarning($"[GUID_{name}] No m_Script found in prefab");
             AssetDatabase.DeleteAsset(path);
         }
         else
         {
-            Debug.LogError("[UGUI_GUID] Failed to save prefab");
+            Debug.LogError($"[GUID_{name}] Failed to save prefab");
         }
     }
 }
