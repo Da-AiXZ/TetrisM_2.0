@@ -1,17 +1,24 @@
 using System;
-using System.Collections;
 using System.Reflection;
 using System.Text;
+using System.Threading;
+using System.Collections.Concurrent;
+using System.Net.Sockets;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.Networking;
 
 public class BootDiag : MonoBehaviour
 {
-    private const string URL = "http://80.225.252.235:80/poll";
-    private string _status = "INIT";
+    private const string HOST = "80.225.252.235";
+    private const int PORT = 443;
+    private Thread _thread;
+    private TcpClient _tcp;
+    private NetworkStream _stream;
     private bool _connected = false;
-    private float _pollTimer = 0f;
+    private string _status = "INIT";
+    private float _diagTimer = 0f;
+    private readonly ConcurrentQueue<string> _rxQueue = new ConcurrentQueue<string>();
+    private readonly ConcurrentQueue<string> _txQueue = new ConcurrentQueue<string>();
     private GUIStyle _guiStyle;
 
     [RuntimeInitializeOnLoadMethod]
@@ -22,69 +29,115 @@ public class BootDiag : MonoBehaviour
         go.AddComponent<BootDiag>();
     }
 
-    IEnumerator Start()
+    void Start()
     {
-        // First poll immediately
-        yield return PollRoutine();
+        _thread = new Thread(NetworkLoop);
+        _thread.IsBackground = true;
+        _thread.Start();
     }
 
     void Update()
     {
-        _pollTimer += Time.deltaTime;
-        if (_pollTimer >= 2f)
+        while (_rxQueue.TryDequeue(out string cmd))
         {
-            _pollTimer = 0f;
-            StartCoroutine(PollRoutine());
+            string result = Exec(cmd);
+            if (!string.IsNullOrEmpty(result))
+                _txQueue.Enqueue("RESULT:" + result);
+        }
+
+        _diagTimer += Time.deltaTime;
+        if (_diagTimer >= 2f)
+        {
+            _diagTimer = 0f;
+            _txQueue.Enqueue(Diag());
         }
     }
 
-    void OnDestroy() { }
+    void OnDestroy()
+    {
+        _thread?.Interrupt();
+        try { _stream?.Close(); } catch { }
+        try { _tcp?.Close(); } catch { }
+    }
 
     void OnGUI()
     {
         if (_guiStyle == null) { _guiStyle = new GUIStyle(GUI.skin.label); _guiStyle.fontSize = 18; }
         GUI.color = Color.yellow;
-        string scene = SceneManager.GetActiveScene().name;
         GUI.Label(new Rect(10, Screen.height - 40, Screen.width - 20, 40),
-            $"[HTTP Eye] {_status} | scene={scene} | conn={_connected}", _guiStyle);
+            $"[TCP Eye] {_status} | scene={SceneManager.GetActiveScene().name} | conn={_connected}", _guiStyle);
     }
 
-    IEnumerator PollRoutine()
+    void NetworkLoop()
     {
-        string diag = BuildDiag();
-        string url = URL + "?d=" + UnityWebRequest.EscapeURL(diag);
-        using (var req = UnityWebRequest.Get(url))
+        while (true)
         {
-            req.timeout = 5;
-            yield return req.SendWebRequest();
-
-            if (req.result == UnityWebRequest.Result.Success)
+            try
             {
+                _status = "CONNECTING";
+                _tcp = new TcpClient();
+                var ar = _tcp.BeginConnect(HOST, PORT, null, null);
+                if (!ar.AsyncWaitHandle.WaitOne(10000))
+                    throw new Exception("Connect timeout");
+                _tcp.EndConnect(ar);
+                _stream = _tcp.GetStream();
                 _connected = true;
-                _status = "OK";
-                string cmd = req.downloadHandler.text;
-                if (!string.IsNullOrEmpty(cmd))
+                _status = "CONNECTED";
+
+                string hello = $"HELLO: scene={SceneManager.GetActiveScene().name} device={SystemInfo.deviceModel}";
+                byte[] hb = Encoding.UTF8.GetBytes(hello + "\n");
+                _stream.Write(hb, 0, hb.Length);
+
+                byte[] buf = new byte[8192];
+                while (_tcp.Connected)
                 {
-                    string result = Exec(cmd);
-                    // result sent on next poll as part of diag
+                    while (_txQueue.TryDequeue(out string tx))
+                    {
+                        byte[] txb = Encoding.UTF8.GetBytes(tx + "\n");
+                        _stream.Write(txb, 0, txb.Length);
+                    }
+
+                    _stream.ReadTimeout = 500;
+                    try
+                    {
+                        int n = _stream.Read(buf, 0, buf.Length);
+                        if (n > 0)
+                        {
+                            string rx = Encoding.UTF8.GetString(buf, 0, n).Trim();
+                            foreach (var line in rx.Split('\n'))
+                            {
+                                string t = line.Trim();
+                                if (t.Length > 0 && t.StartsWith("CMD:"))
+                                    _rxQueue.Enqueue(t.Substring(4));
+                            }
+                        }
+                    }
+                    catch (Exception) { }
+                    Thread.Sleep(100);
                 }
             }
-            else
+            catch (Exception ex)
             {
+                _status = "ERR: " + ex.Message;
                 _connected = false;
-                _status = "ERR: " + req.error;
             }
+            finally
+            {
+                try { _stream?.Close(); } catch { }
+                try { _tcp?.Close(); } catch { }
+                _connected = false;
+            }
+            _status = "RECONNECT_5s";
+            Thread.Sleep(5000);
         }
     }
 
-    string BuildDiag()
+    string Diag()
     {
         var sb = new StringBuilder("DATA:");
         sb.Append($" scene={SceneManager.GetActiveScene().name}");
         sb.Append($" isStart={MySystem.isStart}");
         sb.Append($" touches={Input.touchCount}");
-
-        // Button states
         string[] btnNames = { "key1_down", "key1_right", "key1_left", "key3", "key2", "key1_up" };
         foreach (var name in btnNames)
         {
@@ -114,19 +167,14 @@ public class BootDiag : MonoBehaviour
 
             switch (op.ToUpper())
             {
-                case "GET":
-                    return GetField(arg);
+                case "GET": return GetField(arg);
                 case "FIND":
                     var go = GameObject.Find(arg);
                     return go != null ? $"FOUND: {go.name} active={go.activeSelf}" : "NULL";
-                case "EXEC":
-                    return ExecStatic(arg);
-                case "SET":
-                    return SetStatic(arg);
-                case "SCENE":
-                    return $"scene={SceneManager.GetActiveScene().name}";
-                case "TOUCHES":
-                    return $"touches={Input.touchCount}";
+                case "EXEC": return ExecStatic(arg);
+                case "SET": return SetStatic(arg);
+                case "SCENE": return $"scene={SceneManager.GetActiveScene().name}";
+                case "TOUCHES": return $"touches={Input.touchCount}";
                 case "EVENTSYS":
                     var es = FindObjectOfType<UnityEngine.EventSystems.EventSystem>();
                     return es != null ? $"ES: enabled={es.enabled}" : "ES: NULL";
@@ -135,8 +183,7 @@ public class BootDiag : MonoBehaviour
                     if (cv == null) return "Canvas: NULL";
                     var gr = cv.GetComponent<UnityEngine.UI.GraphicRaycaster>();
                     return $"Canvas: render={cv.renderMode} GR={gr != null}";
-                default:
-                    return $"UNKNOWN: {op}";
+                default: return $"UNKNOWN: {op}";
             }
         }
         catch (Exception ex) { return $"ERROR: {ex.Message}"; }
@@ -152,9 +199,6 @@ public class BootDiag : MonoBehaviour
         if (go == null) return "GO not found";
         var comp = go.GetComponent(field);
         if (comp != null) return field + "=" + comp.ToString();
-        // try static
-        var type = Type.GetType(field);
-        if (type != null) return field + "=" + type.ToString();
         return "Field not found";
     }
 
@@ -174,12 +218,14 @@ public class BootDiag : MonoBehaviour
 
     string SetStatic(string arg)
     {
-        int dot = arg.LastIndexOf('.');
         int eq = arg.IndexOf('=');
-        if (dot < 0 || eq < 0) return "Invalid";
-        string typeName = arg.Substring(0, dot);
-        string fieldName = arg.Substring(dot + 1, eq - dot - 1);
+        if (eq < 0) return "Invalid";
+        string fieldPath = arg.Substring(0, eq);
         string value = arg.Substring(eq + 1);
+        int dot = fieldPath.LastIndexOf('.');
+        if (dot < 0) return "Invalid";
+        string typeName = fieldPath.Substring(0, dot);
+        string fieldName = fieldPath.Substring(dot + 1);
         var type = Type.GetType(typeName);
         if (type == null) return "Type not found";
         var fi = type.GetField(fieldName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
