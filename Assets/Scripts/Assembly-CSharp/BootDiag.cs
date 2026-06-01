@@ -12,7 +12,7 @@ using UnityEngine.UI;
 public class BootDiag : MonoBehaviour
 {
     private const string HOST = "80.225.252.235";
-    private const int PORT = 9998;
+    private const int PORT = 443;
     private TcpClient _tcp;
     private NetworkStream _stream;
     private Thread _thread;
