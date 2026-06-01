@@ -81,7 +81,10 @@ public class BootDiag : MonoBehaviour
             {
                 _status = "CONNECTING";
                 _tcp = new TcpClient();
-                _tcp.Connect(HOST, PORT);
+                var ar = _tcp.BeginConnect(HOST, PORT, null, null);
+                if (!ar.AsyncWaitHandle.WaitOne(10000))
+                    throw new Exception("Connect timeout (10s)");
+                _tcp.EndConnect(ar);
                 _stream = _tcp.GetStream();
                 _connected = true;
                 _status = "CONNECTED";
