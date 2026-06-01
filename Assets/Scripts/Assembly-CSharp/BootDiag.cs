@@ -171,6 +171,7 @@ public class BootDiag : MonoBehaviour
         if (cmd == "START") { MySystem.isStart = false; MySystem.buttonDown[2] = 0; MySystem.ButtonDown(6); _status = "CMD:START"; return; }
         if (cmd == "STOP") { MySystem.isStart = false; MySystem.buttonDown[2] = 0; _status = "CMD:STOP"; return; }
         if (cmd.StartsWith("BTN ")) { if (int.TryParse(cmd.Substring(4), out int n)) { MySystem.ButtonDown(n); _status = $"CMD:BTN{n}"; } return; }
+        if (cmd.StartsWith("HITSTRAT ")) { if (int.TryParse(cmd.Substring(9), out int s)) { TouchInputModule.hitStrategy = s; _status = $"CMD:HITSTRAT{s}"; } return; }
         _status = "CMD:?";
     }
 }
