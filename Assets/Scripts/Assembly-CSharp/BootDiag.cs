@@ -88,6 +88,17 @@ public class BootDiag : MonoBehaviour
                 byte[] hb = Encoding.UTF8.GetBytes(hello + "\n");
                 _stream.Write(hb, 0, hb.Length);
 
+                // Wait for server handshake (OK) within 3 seconds
+                _stream.ReadTimeout = 3000;
+                byte[] okBuf = new byte[32];
+                int okN = _stream.Read(okBuf, 0, okBuf.Length);
+                if (okN <= 0 || Encoding.UTF8.GetString(okBuf, 0, okN).Trim() != "OK")
+                {
+                    _status = "NO_HANDSHAKE";
+                    throw new Exception("No handshake from server");
+                }
+                _status = "CONNECTED";
+
                 byte[] buf = new byte[8192];
                 while (_tcp.Connected)
                 {
