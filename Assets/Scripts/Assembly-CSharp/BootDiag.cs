@@ -8,7 +8,7 @@ using UnityEngine.Networking;
 
 public class BootDiag : MonoBehaviour
 {
-    private const string URL = "http://80.225.252.235:8080/poll";
+    private const string URL = "http://80.225.252.235:80/poll";
     private string _status = "INIT";
     private bool _connected = false;
     private float _pollTimer = 0f;
