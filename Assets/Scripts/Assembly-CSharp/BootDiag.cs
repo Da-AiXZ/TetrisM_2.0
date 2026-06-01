@@ -17,14 +17,12 @@ public class BootDiag : MonoBehaviour
 
     static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        // Fix1: Ensure GraphicRaycaster on Canvas
         var cvs = Object.FindObjectsOfType<Canvas>();
         foreach (var cv in cvs)
         {
             if (cv.GetComponent<GraphicRaycaster>() == null)
                 cv.gameObject.AddComponent<GraphicRaycaster>();
         }
-        // Fix2: Fix RawImage alpha on button objects
         var allMono = Object.FindObjectsOfType<MonoBehaviour>();
         foreach (var m in allMono)
         {
@@ -35,6 +33,10 @@ public class BootDiag : MonoBehaviour
                 ri.color = new Color(ri.color.r, ri.color.g, ri.color.b, 1f);
                 ri.raycastTarget = true;
             }
+            // Also ensure Image if no RawImage
+            var img = m.GetComponent<Image>();
+            if (img != null)
+                img.raycastTarget = true;
         }
     }
 
@@ -44,18 +46,23 @@ public class BootDiag : MonoBehaviour
     void OnGUI()
     {
         GUI.color = Color.yellow;
+        int y = 130;
         var cam = Camera.main;
-        GUI.Label(new Rect(10, 130, 700, 25), "[BootDiag] scene=" + SceneManager.GetActiveScene().name + " roots=" + SceneManager.GetActiveScene().rootCount);
-        GUI.Label(new Rect(10, 155, 700, 25), "[BootDiag] Camera.main=" + (cam != null ? cam.name + " size=" + cam.orthographicSize : "NULL"));
+        GUI.Label(new Rect(10, y, 700, 25), "[BootDiag] scene=" + SceneManager.GetActiveScene().name + " roots=" + SceneManager.GetActiveScene().rootCount); y+=22;
+        GUI.Label(new Rect(10, y, 700, 25), "[BootDiag] Camera.main=" + (cam != null ? cam.name + " size=" + cam.orthographicSize : "NULL")); y+=22;
+        
         var cvs = Object.FindObjectsOfType<Canvas>();
         bool hasGR = cvs.Length > 0 && cvs[0].GetComponent<GraphicRaycaster>() != null;
-        GUI.Label(new Rect(10, 180, 700, 25), "[BootDiag] Canvases=" + cvs.Length + " mode=" + (cvs.Length > 0 ? cvs[0].renderMode.ToString() : "?") + " GR=" + hasGR);
+        GUI.Label(new Rect(10, y, 700, 25), "[BootDiag] Canvases=" + cvs.Length + " mode=" + (cvs.Length > 0 ? cvs[0].renderMode.ToString() : "?") + " GR=" + hasGR); y+=22;
 
         var es = Object.FindObjectOfType<EventSystem>();
-        GUI.Label(new Rect(10, 205, 700, 25), "[BootDiag] EventSystem=" + (es != null ? (es.enabled ? "ON" : "DISABLED") : "NULL"));
+        var inputMod = es != null ? es.GetComponent<StandaloneInputModule>() : null;
+        GUI.Label(new Rect(10, y, 700, 25), "[BootDiag] EventSystem=" + (es != null ? (es.enabled ? "ON" : "DISABLED") : "NULL") + " InputMod=" + (inputMod != null ? "Standalone" : "NULL")); y+=22;
 
         var allMono = Object.FindObjectsOfType<MonoBehaviour>();
-        System.Text.StringBuilder sb = new System.Text.StringBuilder("[BootDiag] Buttons: ");
+        var topCanvas = cvs.Length > 0 ? cvs[0].transform : null;
+
+        var sb = new System.Text.StringBuilder("[BootDiag] Buttons:");
         int btnCount = 0;
         foreach (var m in allMono)
         {
@@ -69,26 +76,42 @@ public class BootDiag : MonoBehaviour
             bool isD = _fiIsDown != null && (bool)_fiIsDown.GetValue(m);
             bool isP = _fiIsPress != null && (bool)_fiIsPress.GetValue(m);
             var ri = m.GetComponent<RawImage>();
-            sb.Append(m.name).Append("(");
-            sb.Append(isD ? "D" : "-");
-            sb.Append(isP ? "P" : "-");
+            var rt = m.GetComponent<RectTransform>();
+            
+            // Check parent chain to Canvas
+            bool isChildOfCanvas = false;
+            if (topCanvas != null)
+            {
+                Transform t = m.transform;
+                while (t != null) { if (t == topCanvas) { isChildOfCanvas = true; break; } t = t.parent; }
+            }
+
+            sb.Append("\n  ").Append(m.name).Append(" ");
+            sb.Append(isD ? "D" : "-").Append(isP ? "P" : "-");
             sb.Append(ri != null ? "R" : "?");
             sb.Append(ri != null && ri.color.a > 0.5f ? "v" : "h");
-            sb.Append(") ");
+            sb.Append(" child=").Append(isChildOfCanvas ? "Y" : "N");
+            sb.Append(" sz=").Append(rt != null ? rt.rect.width.ToString("F0") + "x" + rt.rect.height.ToString("F0") : "?");
         }
-        if (btnCount == 0) sb.Append("NONE");
-        GUI.Label(new Rect(10, 230, 700, 25), sb.ToString());
+        if (btnCount == 0) sb.Append(" NONE");
+        GUI.Label(new Rect(10, y, 700, 25 * (btnCount + 1)), sb.ToString());
+        y += 25 * (btnCount + 1) + 5;
 
         var k1 = Object.FindObjectOfType<Key1>();
         if (k1 != null)
-            GUI.Label(new Rect(10, 255, 700, 25), "[BootDiag] Key1: zero=" + (k1.zero != null) + " up=" + (k1.up != null) + " down=" + (k1.down != null) + " left=" + (k1.left != null) + " right=" + (k1.right != null));
+            GUI.Label(new Rect(10, y, 700, 25), "[BootDiag] Key1: zero=" + (k1.zero != null) + " up=" + (k1.up != null) + " down=" + (k1.down != null) + " left=" + (k1.left != null) + " right=" + (k1.right != null));
         else
-            GUI.Label(new Rect(10, 255, 700, 25), "[BootDiag] Key1: NULL");
+            GUI.Label(new Rect(10, y, 700, 25), "[BootDiag] Key1: NULL");
+        y+=22;
 
         var k2 = Object.FindObjectOfType<Key2>();
         if (k2 != null)
-            GUI.Label(new Rect(10, 280, 700, 25), "[BootDiag] Key2: up=" + (k2.up != null) + " down=" + (k2.down != null));
+            GUI.Label(new Rect(10, y, 700, 25), "[BootDiag] Key2: up=" + (k2.up != null) + " down=" + (k2.down != null));
         else
-            GUI.Label(new Rect(10, 280, 700, 25), "[BootDiag] Key2: NULL");
+            GUI.Label(new Rect(10, y, 700, 25), "[BootDiag] Key2: NULL");
+        
+        y+=22;
+        // REPL status
+        GUI.Label(new Rect(10, y, 700, 25), "[BootDiag] REPL: polling " + (Time.frameCount % 2 == 0 ? "." : " "));
     }
 }
