@@ -140,9 +140,6 @@ public class BootDiag : MonoBehaviour
             MySystem.isStart = false;
             _status = "CMD:STOP";
             return;
-        }";
-            }
-            return;
         }
         _status = "CMD:?";
     }
