@@ -113,13 +113,19 @@ public class BootDiag : MonoBehaviour
         var bestGo = GameObject.Find("Best");
         sb.Append($" bestGo={(bestGo != null ? "OK" : "NULL")}");
         
+        // BlocksSprite stats
+        int bsLen = (MySystem.BlocksSprite != null) ? MySystem.BlocksSprite.Length : -1;
+        int bsNonNull =0;
+        if (MySystem.BlocksSprite != null) { for (int i =0; i < MySystem.BlocksSprite.Length; i++) if (MySystem.BlocksSprite[i] != null) bsNonNull++; }
+        sb.Append($" bsLen={bsLen} bsOk={bsNonNull}");
+        
         // Check FallDown_2 sprite
         var fd2s = GameObject.FindObjectsOfType<FallDown_2>();
         if (fd2s.Length > 0)
         {
             var fd2 = fd2s[0];
             sb.Append($" fd2Sr={(fd2.spriteR != null ? "OK" : "NULL")}");
-            if (fd2.spriteR != null) sb.Append($" fd2Spr={(fd2.spriteR.sprite != null ? "OK" : "NULL")}");
+            if (fd2.spriteR != null) sb.Append($" fd2Spr={(fd2.spriteR.sprite != null ? "OK" : "NULL")} fd2Id={fd2.id}");
         }
         
         return sb.ToString();
