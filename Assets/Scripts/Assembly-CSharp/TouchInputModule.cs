@@ -5,7 +5,6 @@ using System.Collections.Generic;
 public class TouchInputModule : BaseInputModule
 {
 	public static string lastDiag = "INIT";
-{
 	private PointerEventData pointerData;
 	private List<RaycastResult> raycastResults = new List<RaycastResult>();
 	private int processCount = 0;
