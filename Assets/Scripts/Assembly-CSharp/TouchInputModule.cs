@@ -14,90 +14,86 @@ public class TouchInputModule : BaseInputModule
 	private string lastTouchPos = "";
 
 	public override void Process()
-{
-	processCount++;
-	if (Input.touchCount <= 0) return;
-	touchCount = Input.touchCount;
-
-	var touch = Input.GetTouch(0);
-	lastTouchPos = $"{touch.position.x:F0},{touch.position.y:F0}";
-
-	if (pointerData == null)
-		pointerData = new PointerEventData(eventSystem);
-
-	pointerData.Reset();
-	pointerData.position = touch.position;
-
-	// Direct hit test: iterate all Buttons, check rect
-	raycastResults.Clear();
-	var canvas = GameObject.FindObjectOfType<Canvas>();
-	if (canvas != null)
 	{
-		var buttons = canvas.GetComponentsInChildren<Button>();
-		foreach (var btn in buttons)
+		processCount++;
+		if (Input.touchCount <= 0) return;
+		touchCount = Input.touchCount;
+
+		var touch = Input.GetTouch(0);
+		lastTouchPos = $"{touch.position.x:F0},{touch.position.y:F0}";
+
+		if (pointerData == null)
+			pointerData = new PointerEventData(eventSystem);
+
+		pointerData.Reset();
+		pointerData.position = touch.position;
+
+		// Direct hit test using RectangleContainsScreenPoint (handles CanvasScaler)
+		raycastResults.Clear();
+		var canvas = GameObject.FindObjectOfType<Canvas>();
+		if (canvas != null)
 		{
-			var rt = btn.transform as RectTransform;
-			if (rt == null) continue;
-			if (RectTransformUtility.RectangleContainsScreenPoint(rt, touch.position, canvas.worldCamera))
+			var buttons = canvas.GetComponentsInChildren<Button>();
+			foreach (var btn in buttons)
 			{
-				var rr = new RaycastResult();
-				rr.gameObject = btn.gameObject;
-				rr.module = null;
-				raycastResults.Add(rr);
-				break; // first hit only
+				var rt = btn.transform as RectTransform;
+				if (rt == null) continue;
+				if (RectTransformUtility.RectangleContainsScreenPoint(rt, touch.position, canvas.worldCamera))
+				{
+					var rr = new RaycastResult();
+					rr.gameObject = btn.gameObject;
+					rr.module = null;
+					raycastResults.Add(rr);
+					break;
+				}
 			}
+			rayCount = raycastResults.Count;
+		}
+		else
+		{
+			rayCount = -1;
+		}
+
+		if (raycastResults.Count > 0)
+			lastHit = $"{raycastResults[0].gameObject.name}:{raycastResults[0].gameObject.layer}";
+		else
+			lastHit = "NONE";
+
+		var firstTarget = raycastResults.Count > 0 ? raycastResults[0] : default(RaycastResult);
+
+		if (touch.phase == TouchPhase.Began)
+		{
+			pointerData.pointerPressRaycast = firstTarget;
+			var handler = ExecuteEvents.GetEventHandler<IPointerDownHandler>(firstTarget.gameObject);
+			if (handler != null)
+			{
+				ExecuteEvents.Execute(handler, pointerData, ExecuteEvents.pointerDownHandler);
+				pointerData.pointerPress = handler;
 			}
 		}
-		rayCount = raycastResults.Count;
-	}
-	else
-	{
-		rayCount = -1;
-	}
-
-	if (raycastResults.Count > 0)
-	{
-		lastHit = $"{raycastResults[0].gameObject.name}:{raycastResults[0].gameObject.layer}";
-	}
-	else
-	{
-		lastHit = "NONE";
-	}
-
-	var firstTarget = raycastResults.Count > 0 ? raycastResults[0] : default(RaycastResult);
-
-	if (touch.phase == TouchPhase.Began)
-	{
-		pointerData.pointerPressRaycast = firstTarget;
-		var handler = ExecuteEvents.GetEventHandler<IPointerDownHandler>(firstTarget.gameObject);
-		if (handler != null)
+		else if (touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled)
 		{
-			ExecuteEvents.Execute(handler, pointerData, ExecuteEvents.pointerDownHandler);
-			pointerData.pointerPress = handler;
-		}
-	}
-	else if (touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled)
-	{
-		if (pointerData.pointerPress != null)
-		{
-			ExecuteEvents.Execute(pointerData.pointerPress, pointerData, ExecuteEvents.pointerUpHandler);
-			ExecuteEvents.Execute(pointerData.pointerPress, pointerData, ExecuteEvents.pointerClickHandler);
-		}
-		pointerData.pointerPress = null;
-	}
-	else if (touch.phase == TouchPhase.Moved || touch.phase == TouchPhase.Stationary)
-	{
-		var newHandler = (firstTarget.gameObject != null)
-			? ExecuteEvents.GetEventHandler<IPointerDownHandler>(firstTarget.gameObject)
-			: null;
-
-		if (pointerData.pointerPress != null && newHandler != pointerData.pointerPress)
-		{
-			ExecuteEvents.Execute(pointerData.pointerPress, pointerData, ExecuteEvents.pointerExitHandler);
+			if (pointerData.pointerPress != null)
+			{
+				ExecuteEvents.Execute(pointerData.pointerPress, pointerData, ExecuteEvents.pointerUpHandler);
+				ExecuteEvents.Execute(pointerData.pointerPress, pointerData, ExecuteEvents.pointerClickHandler);
+			}
 			pointerData.pointerPress = null;
 		}
-	}
-	lastDiag = GetDiag();
+		else if (touch.phase == TouchPhase.Moved || touch.phase == TouchPhase.Stationary)
+		{
+			var newHandler = (firstTarget.gameObject != null)
+				? ExecuteEvents.GetEventHandler<IPointerDownHandler>(firstTarget.gameObject)
+				: null;
+
+			if (pointerData.pointerPress != null && newHandler != pointerData.pointerPress)
+			{
+				ExecuteEvents.Execute(pointerData.pointerPress, pointerData, ExecuteEvents.pointerExitHandler);
+				pointerData.pointerPress = null;
+			}
+		}
+
+		lastDiag = GetDiag();
 	}
 
 	public string GetDiag()
