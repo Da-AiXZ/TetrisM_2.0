@@ -289,7 +289,7 @@ public class MySystem : MonoBehaviour
 	private void Start()
 	{
 		Reset_();
-		StartRepl();
+		// REPL moved to BootDiag.cs
 	}
 
 	private void StartRepl()
@@ -445,45 +445,6 @@ public class MySystem : MonoBehaviour
 
 	private int frameCount = 0;
 
-#if UNITY_IOS
-	private System.Collections.Generic.Dictionary<int, Button> _activeTouches = new System.Collections.Generic.Dictionary<int, Button>();
-	
-	private void ProcessTouches()
-	{
-		var es = UnityEngine.EventSystems.EventSystem.current;
-		if (es == null) return;
-		for (int i = 0; i < Input.touchCount; i++)
-		{
-			Touch t = Input.GetTouch(i);
-			var ped = new UnityEngine.EventSystems.PointerEventData(es);
-			ped.position = t.position;
-			if (t.phase == TouchPhase.Began)
-			{
-				var results = new System.Collections.Generic.List<UnityEngine.EventSystems.RaycastResult>();
-				es.RaycastAll(ped, results);
-				foreach (var r in results)
-				{
-					Button btn = r.gameObject.GetComponent<Button>();
-					if (btn != null)
-					{
-						UnityEngine.EventSystems.ExecuteEvents.Execute(btn.gameObject, ped, UnityEngine.EventSystems.ExecuteEvents.pointerDownHandler);
-						_activeTouches[t.fingerId] = btn;
-						break;
-					}
-				}
-			}
-			else if (t.phase == TouchPhase.Ended || t.phase == TouchPhase.Canceled)
-			{
-				if (_activeTouches.TryGetValue(t.fingerId, out Button btn))
-				{
-					UnityEngine.EventSystems.ExecuteEvents.Execute(btn.gameObject, ped, UnityEngine.EventSystems.ExecuteEvents.pointerUpHandler);
-					UnityEngine.EventSystems.ExecuteEvents.Execute(btn.gameObject, ped, UnityEngine.EventSystems.ExecuteEvents.pointerClickHandler);
-					_activeTouches.Remove(t.fingerId);
-				}
-			}
-		}
-	}
-#endif
 	private void Update()
 	{
 		if (frameCount == 0) SendLog("Update frame0, isStart=" + isStart + " gameOver=" + gameOver);
@@ -491,10 +452,6 @@ public class MySystem : MonoBehaviour
 		frameCount++;
 		Summon(isFirst: false);
 		Tick();
-#if UNITY_IOS
-		// Manual touch handler bypasses broken StandaloneInputModule on IL2CPP/iOS
-		ProcessTouches();
-#endif
 		if (Input.GetKey("joystick button 0"))
 		{
 			Debug.Log(1);
