@@ -45,7 +45,7 @@ public class TouchInputModule : BaseInputModule
 				{
 					var rr = new RaycastResult();
 					rr.gameObject = btn.gameObject;
-					rr.module = this;
+					rr.module = null;
 					raycastResults.Add(rr);
 					break; // first hit only
 				}
