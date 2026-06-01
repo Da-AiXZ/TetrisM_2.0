@@ -82,18 +82,35 @@ public class BootDiag : MonoBehaviour
         sb.Append($" scene={SceneManager.GetActiveScene().name}");
         sb.Append($" isStart={MySystem.isStart}");
         sb.Append($" touches={Input.touchCount}");
-        sb.Append($" touchSup={Input.touchSupported}");
-        sb.Append($" im={((EventSystem.current != null && EventSystem.current.currentInputModule != null) ? EventSystem.current.currentInputModule.GetType().Name : "null")}");
         sb.Append($" b0={MySystem.buttonDown[0]} b1={MySystem.buttonDown[1]} b2={MySystem.buttonDown[2]}");
         sb.Append($" score={MySystem.score}");
-        sb.Append($" gameOver={MySystem.gameOver}");
+        sb.Append($" fdRes={(Resources.Load("FallDowns") != null ? "OK" : "NULL")}");
         
-        var fd = Resources.Load("FallDowns");
-        sb.Append($" fdRes={(fd != null ? "OK" : "NULL")}");
-        var show = GameObject.Find("Showing");
-        sb.Append($" show={(show != null ? "OK" : "NULL")}");
-        var startGo = GameObject.Find("Canvas")?.transform.Find("start")?.gameObject;
-        sb.Append($" startGo={(startGo != null ? startGo.activeSelf.ToString() : "NULL")}");
+        // Find all FallDown instances
+        var allFd = GameObject.FindObjectsOfType<FallDown>();
+        sb.Append($" fdCnt={allFd.Length}");
+        if (allFd.Length > 0)
+        {
+            var fd = allFd[0];
+            sb.Append($" fdPos=({fd.transform.position.x:F1},{fd.transform.position.y:F1},{fd.transform.position.z:F1})");
+            sb.Append($" fdScl=({fd.transform.localScale.x:F2},{fd.transform.localScale.y:F2},{fd.transform.localScale.z:F2})");
+            var sr = fd.GetComponent<SpriteRenderer>();
+            sb.Append($" fdSr={(sr != null ? "OK" : "NULL")}");
+            if (sr != null) sb.Append($" fdCol=({sr.color.r:F2},{sr.color.g:F2},{sr.color.b:F2},{sr.color.a:F2})");
+        }
+        
+        // Camera
+        var cam = Camera.main;
+        if (cam != null)
+            sb.Append($" camSz={cam.orthographicSize:F1} camPos=({cam.transform.position.x:F1},{cam.transform.position.y:F1})");
+        
+        // Score text
+        var st = GameObject.Find("ScoreText");
+        sb.Append($" st={(st != null ? "OK" : "NULL")}");
+        if (st != null) sb.Append($" stAct={st.activeSelf}");
+        
+        var ht = GameObject.Find("HighScoreText");
+        sb.Append($" ht={(ht != null ? "OK" : "NULL")}");
         
         return sb.ToString();
     }
