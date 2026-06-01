@@ -614,17 +614,84 @@ public class MySystem : MonoBehaviour
 		waterKids = Resources.Load("waterKids") as GameObject;
 		lavaKids = Resources.Load("lavaKids") as GameObject;
 		types = new bool[7] { true, true, true, true, true, true, true };
-		BlocksSprite = Resources.LoadAll<Sprite>("Blocks");
-		// AssetRipper fallback: sprite sheet metadata empty, load individual assets
-		if (BlocksSprite == null || BlocksSprite.Length == 0)
+		// AssetRipper sprite sheet fix: create sprites at runtime from texture
+		BlocksSprite = new Sprite[112];
+		Texture2D blocksTex = Resources.Load<Texture2D>("Blocks");
+		if (blocksTex != null)
 		{
-			var ids = new int[] {15,16,17,18,19,20,21,22,23,24,25,26,27,42,43,44,45,46,47,49,50,51,53,54,55,70,71,72,73,74,75,76,77,78,79,80,81,82,83,98,99,100,101,102,103,104,105,106,107,108,109,110,111};
-			int max = 112;
-			for (int i = 0; i < ids.Length; i++) { if (ids[i] > max) max = ids[i]; }
-			BlocksSprite = new Sprite[max + 1];
-			for (int i = 0; i < ids.Length; i++)
+			int[,] rects = new int[,] {
+				{ 15, 17, 102, 16, 16 },
+				{ 16, 34, 102, 16, 16 },
+				{ 17, 51, 102, 16, 16 },
+				{ 18, 68, 102, 16, 16 },
+				{ 19, 85, 102, 16, 16 },
+				{ 20, 102, 102, 16, 16 },
+				{ 21, 119, 102, 16, 16 },
+				{ 22, 136, 102, 16, 16 },
+				{ 23, 153, 102, 16, 16 },
+				{ 24, 170, 102, 16, 16 },
+				{ 25, 187, 102, 16, 16 },
+				{ 26, 204, 102, 16, 16 },
+				{ 27, 221, 102, 16, 16 },
+				{ 42, 0, 68, 16, 16 },
+				{ 43, 17, 68, 16, 16 },
+				{ 44, 34, 68, 16, 16 },
+				{ 45, 51, 68, 16, 16 },
+				{ 46, 68, 68, 16, 16 },
+				{ 47, 85, 68, 16, 16 },
+				{ 49, 119, 68, 16, 16 },
+				{ 50, 136, 68, 16, 16 },
+				{ 51, 153, 68, 16, 16 },
+				{ 53, 187, 68, 16, 16 },
+				{ 54, 204, 68, 16, 16 },
+				{ 55, 221, 68, 16, 16 },
+				{ 70, 0, 34, 16, 16 },
+				{ 71, 17, 34, 16, 16 },
+				{ 72, 34, 34, 16, 16 },
+				{ 73, 51, 34, 16, 16 },
+				{ 74, 68, 34, 16, 16 },
+				{ 75, 85, 34, 16, 16 },
+				{ 76, 102, 34, 16, 16 },
+				{ 77, 119, 34, 16, 16 },
+				{ 78, 136, 34, 16, 16 },
+				{ 79, 153, 34, 16, 16 },
+				{ 80, 170, 34, 16, 16 },
+				{ 81, 187, 34, 16, 16 },
+				{ 82, 204, 34, 16, 16 },
+				{ 83, 221, 34, 16, 16 },
+				{ 98, 0, 0, 16, 16 },
+				{ 99, 17, 0, 16, 16 },
+				{ 100, 34, 0, 16, 16 },
+				{ 101, 51, 0, 16, 16 },
+				{ 102, 68, 0, 16, 16 },
+				{ 103, 85, 0, 16, 16 },
+				{ 104, 102, 0, 16, 16 },
+				{ 105, 119, 0, 16, 16 },
+				{ 106, 136, 0, 16, 16 },
+				{ 107, 153, 0, 16, 16 },
+				{ 108, 170, 0, 16, 16 },
+				{ 109, 187, 0, 16, 16 },
+				{ 110, 204, 0, 16, 16 },
+				{ 111, 221, 0, 16, 16 }
+			};
+			for (int i = 0; i < rects.GetLength(0); i++)
 			{
-				BlocksSprite[ids[i]] = Resources.Load<Sprite>("Blocks_" + ids[i]);
+				int sid = rects[i,0];
+				if (sid < BlocksSprite.Length)
+					BlocksSprite[sid] = Sprite.Create(blocksTex,
+						new Rect(rects[i,1], rects[i,2], rects[i,3], rects[i,4]),
+						new Vector2(0.5f, 0.5f), 100f);
+			}
+			// Fill missing IDs with nearest available sprite
+			for (int i = 0; i < BlocksSprite.Length; i++)
+			{
+				if (BlocksSprite[i] != null) continue;
+				// Find nearestnon-null sprite
+				for (int d = 1; d < 20; d++)
+				{
+					if (i + d < BlocksSprite.Length && BlocksSprite[i + d] != null) { BlocksSprite[i] = BlocksSprite[i + d]; break; }
+					if (i - d >=0 && BlocksSprite[i - d] != null) { BlocksSprite[i] = BlocksSprite[i - d]; break; }
+				}
 			}
 		}
 		string text = RFileS("/Score", "/BestScore.cup", 1024);
