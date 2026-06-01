@@ -679,7 +679,7 @@ public class MySystem : MonoBehaviour
 				int sid = rects[i,0];
 				if (sid < BlocksSprite.Length)
 					BlocksSprite[sid] = Sprite.Create(blocksTex,
-						new Rect(rects[i,1], rects[i,2], rects[i,3], rects[i,4]),
+						new Rect(rects[i,1], blocksTex.height - rects[i,2] - rects[i,4], rects[i,3], rects[i,4]),
 						new Vector2(0.5f, 0.5f), 100f);
 			}
 			// Fill missing IDs with nearest available sprite
