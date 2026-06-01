@@ -116,10 +116,36 @@ public class BootDiag : MonoBehaviour
         // BlocksSprite stats
         int bsLen = (MySystem.BlocksSprite != null) ? MySystem.BlocksSprite.Length : -1;
         int bsNonNull =0;
-        if (MySystem.BlocksSprite != null) { for (int i =0; i < MySystem.BlocksSprite.Length; i++) if (MySystem.BlocksSprite[i] != null) bsNonNull++; }
+        if (MySystem.BlocksSprite != null) {
+            string sr(int i) {
+                if (i >= MySystem.BlocksSprite.Length || MySystem.BlocksSprite[i] == null) return "NULL";
+                var r = MySystem.BlocksSprite[i].rect;
+                return $"({r.x:F0},{r.y:F0},{r.width:F0},{r.height:F0})";
+            }
+            sb.Append($" spR[15]={sr(15)} spR[16]={sr(16)} spR[52]={sr(52)} spR[70]={sr(70)}");
+            // Check sprite texture reference
+            if (MySystem.BlocksSprite[15] != null)
+                sb.Append($" spTex[15]={(MySystem.BlocksSprite[15].texture != null ? "OK" : "NULL")}");
+            // Check fd2 sprite texture
+            var fd2all = GameObject.FindObjectsOfType<FallDown_2>();
+            if (fd2all.Length >0 && fd2all[0].spriteR != null && fd2all[0].spriteR.sprite != null)
+                sb.Append($" fd2Tex={(fd2all[0].spriteR.sprite.texture != null ? "OK" : "NULL")}"); for (int i =0; i < MySystem.BlocksSprite.Length; i++) if (MySystem.BlocksSprite[i] != null) bsNonNull++; }
         sb.Append($" bsLen={bsLen} bsOk={bsNonNull}");
         // Sample first few sprite names
         if (MySystem.BlocksSprite != null) {
+            string sr(int i) {
+                if (i >= MySystem.BlocksSprite.Length || MySystem.BlocksSprite[i] == null) return "NULL";
+                var r = MySystem.BlocksSprite[i].rect;
+                return $"({r.x:F0},{r.y:F0},{r.width:F0},{r.height:F0})";
+            }
+            sb.Append($" spR[15]={sr(15)} spR[16]={sr(16)} spR[52]={sr(52)} spR[70]={sr(70)}");
+            // Check sprite texture reference
+            if (MySystem.BlocksSprite[15] != null)
+                sb.Append($" spTex[15]={(MySystem.BlocksSprite[15].texture != null ? "OK" : "NULL")}");
+            // Check fd2 sprite texture
+            var fd2all = GameObject.FindObjectsOfType<FallDown_2>();
+            if (fd2all.Length >0 && fd2all[0].spriteR != null && fd2all[0].spriteR.sprite != null)
+                sb.Append($" fd2Tex={(fd2all[0].spriteR.sprite.texture != null ? "OK" : "NULL")}");
             string sn(int i) => (i < MySystem.BlocksSprite.Length && MySystem.BlocksSprite[i] != null) ? MySystem.BlocksSprite[i].name : "NULL";
             sb.Append($" sp[0]={sn(0)} sp[1]={sn(1)} sp[15]={sn(15)} sp[52]={sn(52)}");
         }
