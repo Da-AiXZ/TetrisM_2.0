@@ -293,7 +293,7 @@ public class MySystem : MonoBehaviour
 		// REPL moved to BootDiag.cs
 		// Touch input: replace StandaloneInputModule
 		// Screen adaptation: slight height-match to create horizontal margins
-		var scaler = Object.FindObjectOfType<UnityEngine.UI.CanvasScaler>();
+		var scaler = UnityEngine.Object.FindObjectOfType<UnityEngine.UI.CanvasScaler>();
 		if (scaler != null)
 		{
 			scaler.screenMatchMode = UnityEngine.UI.CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
