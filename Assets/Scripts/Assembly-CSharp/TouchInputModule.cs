@@ -101,7 +101,6 @@ public class TouchInputModule : BaseInputModule
 		}
 	}
 	lastDiag = GetDiag();
-}
 	}
 
 	public string GetDiag()
