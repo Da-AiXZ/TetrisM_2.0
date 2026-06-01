@@ -29,8 +29,25 @@ public class TouchInputModule : BaseInputModule
 		pointerData.position = touch.position;
 
 		raycastResults.Clear();
-		eventSystem.RaycastAll(pointerData, raycastResults);
-		rayCount = raycastResults.Count;
+		// Use GraphicRaycaster directly instead of EventSystem.RaycastAll
+		var canvas = GameObject.FindObjectOfType<Canvas>();
+		if (canvas != null)
+		{
+			var raycaster = canvas.GetComponent<UnityEngine.UI.GraphicRaycaster>();
+			if (raycaster != null)
+			{
+				raycaster.Raycast(pointerData, raycastResults);
+				rayCount = raycastResults.Count;
+			}
+			else
+			{
+				rayCount = -2; // no GraphicRaycaster on Canvas
+			}
+		}
+		else
+		{
+			rayCount = -1; // no Canvas
+		}
 
 		if (raycastResults.Count > 0)
 		{
