@@ -298,7 +298,13 @@ public class MySystem : MonoBehaviour
 		{
 			scaler.screenMatchMode = UnityEngine.UI.CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
 			scaler.matchWidthOrHeight = 0.12f;
+			Canvas.ForceUpdateCanvases();
 		}
+		// Touch input: replace StandaloneInputModule
+		// Ensure GraphicRaycaster on Canvas (AssetRipper may drop it)
+		var canvas = UnityEngine.Object.FindObjectOfType<Canvas>();
+		if (canvas != null && canvas.GetComponent<UnityEngine.UI.GraphicRaycaster>() == null)
+			canvas.gameObject.AddComponent<UnityEngine.UI.GraphicRaycaster>();
 		// Touch input: replace StandaloneInputModule
 		var es = EventSystem.current;
 		if (es != null)
