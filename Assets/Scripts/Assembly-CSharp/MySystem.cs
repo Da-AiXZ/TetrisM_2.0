@@ -290,6 +290,14 @@ public class MySystem : MonoBehaviour
 	{
 		Reset_();
 		// REPL moved to BootDiag.cs
+		// Touch input: replace StandaloneInputModule
+		var es = EventSystem.current;
+		if (es != null)
+		{
+			var standalone = es.GetComponent<StandaloneInputModule>();
+			if (standalone != null) standalone.enabled = false;
+			es.gameObject.AddComponent<TouchInputModule>();
+		}
 	}
 
 	private void StartRepl()
