@@ -298,7 +298,7 @@ public class MySystem : MonoBehaviour
 		{
 			scaler.screenMatchMode = UnityEngine.UI.CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
 			scaler.matchWidthOrHeight = 0.12f;
-			Canvas.ForceUpdateCanvases();
+			// Canvas.ForceUpdateCanvases removed - suspected regression
 		}
 		// Touch input: replace StandaloneInputModule
 		// Ensure GraphicRaycaster on Canvas (AssetRipper may drop it)
