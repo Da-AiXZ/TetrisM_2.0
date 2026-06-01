@@ -81,7 +81,7 @@ public class BootDiag : MonoBehaviour
         var sb = new StringBuilder("DATA:");
         sb.Append($" scene={SceneManager.GetActiveScene().name}");
         sb.Append($" isStart={MySystem.isStart}");
-        sb.Append($" touches={Input.touchCount}");
+        sb.Append($" touches={Input.touchCount}"); var tim = Object.FindObjectOfType<TouchInputModule>(); if (tim != null) sb.Append($" {tim.GetDiag()}"); else sb.Append(" tim=NULL");
         sb.Append($" b0={MySystem.buttonDown[0]} b1={MySystem.buttonDown[1]} b2={MySystem.buttonDown[2]}");
         sb.Append($" score={MySystem.score}");
         sb.Append($" fdRes={(Resources.Load("FallDowns") != null ? "OK" : "NULL")}");

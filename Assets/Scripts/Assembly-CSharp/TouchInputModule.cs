@@ -6,10 +6,15 @@ public class TouchInputModule : BaseInputModule
 {
 	private PointerEventData pointerData;
 	private List<RaycastResult> raycastResults = new List<RaycastResult>();
+	private int processCount = 0;
+	private int touchCount = 0;
+	private string lastHit = "";
 
 	public override void Process()
 	{
+		processCount++;
 		if (Input.touchCount <= 0) return;
+		touchCount = Input.touchCount;
 
 		var touch = Input.GetTouch(0);
 
@@ -21,6 +26,9 @@ public class TouchInputModule : BaseInputModule
 
 		raycastResults.Clear();
 		eventSystem.RaycastAll(pointerData, raycastResults);
+
+		if (raycastResults.Count > 0)
+			lastHit = raycastResults[0].gameObject != null ? raycastResults[0].gameObject.name : "null";
 
 		var firstTarget = raycastResults.Count > 0 ? raycastResults[0] : default(RaycastResult);
 
@@ -55,5 +63,10 @@ public class TouchInputModule : BaseInputModule
 				pointerData.pointerPress = null;
 			}
 		}
+	}
+
+	public string GetDiag()
+	{
+		return $"timProc={processCount} timTouch={touchCount} timHit={lastHit}";
 	}
 }
