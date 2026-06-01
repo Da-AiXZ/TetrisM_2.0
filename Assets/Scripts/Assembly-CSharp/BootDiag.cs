@@ -170,7 +170,7 @@ public class BootDiag : MonoBehaviour
                 {
                     bool isDown = (bool)typeof(Button).GetField("isDown", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(btn);
                     bool isPress = (bool)typeof(Button).GetField("isPress", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(btn);
-                    sb.Append($" [{name}:D{isDown}P{isPress}]", 0);
+                    sb.Append($" [{name}:D{isDown}P{isPress}]");
                 }
             }
         }
