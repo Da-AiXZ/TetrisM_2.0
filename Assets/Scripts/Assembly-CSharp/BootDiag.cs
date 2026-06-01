@@ -9,7 +9,7 @@ using UnityEngine.SceneManagement;
 
 public class BootDiag : MonoBehaviour
 {
-    private const string URL = "https://80.225.252.235:8443/poll";
+    private const string URL = "https://80.225.252.235:443/poll";
     private const float POLL_INTERVAL = 2f;
     private string _status = "INIT";
     private float _timer = 0f;
