@@ -185,7 +185,7 @@ public class TouchInputModule : BaseInputModule
 		int bCnt = buttons != null ? buttons.Length : 0;
 
 		var sb = new System.Text.StringBuilder();
-		sb.Append($"T:{inst.processCount} tc={inst.touchCount} strat={inst.hitStrategy}:{inst.stratInfo}");
+		sb.Append($"T:{inst.processCount} tc={inst.touchCount} strat={TouchInputModule.hitStrategy}:{inst.stratInfo}");
 		sb.Append($" hit={inst.lastHit} ray={inst.rayCount}");
 		sb.Append($" pos=({inst.lastTouchPos}) ph={inst.touchPhase}");
 
