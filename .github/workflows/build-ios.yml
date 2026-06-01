@@ -2,6 +2,11 @@ name: Build iOS
 
 on:
   workflow_dispatch:
+    inputs:
+      dummy:
+        description: "dummy"
+        required: false
+        default: "go"
 
 jobs:
   build-ios:
