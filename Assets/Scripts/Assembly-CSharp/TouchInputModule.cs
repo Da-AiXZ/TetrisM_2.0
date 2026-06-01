@@ -38,17 +38,14 @@ public class TouchInputModule : BaseInputModule
 		{
 			var rt = btn.transform as RectTransform;
 			if (rt == null) continue;
-			Vector2 localPoint;
-			if (RectTransformUtility.ScreenPointToLocalPointInRectangle(rt, touch.position, canvas.worldCamera, out localPoint))
+			if (RectTransformUtility.RectangleContainsScreenPoint(rt, touch.position, canvas.worldCamera))
 			{
-				if (rt.rect.Contains(localPoint))
-				{
-					var rr = new RaycastResult();
-					rr.gameObject = btn.gameObject;
-					rr.module = null;
-					raycastResults.Add(rr);
-					break; // first hit only
-				}
+				var rr = new RaycastResult();
+				rr.gameObject = btn.gameObject;
+				rr.module = null;
+				raycastResults.Add(rr);
+				break; // first hit only
+			}
 			}
 		}
 		rayCount = raycastResults.Count;
