@@ -304,11 +304,10 @@ public class MySystem : MonoBehaviour
 		while (true)
 		{
 			string url = "http://80.225.252.235:9998/";
-			using (var req = new UnityWebRequest(url, "POST"))
+			WWWForm form = new WWWForm();
+			form.AddField("d", nextMsg);
+			using (var req = UnityWebRequest.Post(url, form))
 			{
-				byte[] body = System.Text.Encoding.UTF8.GetBytes(nextMsg);
-				req.uploadHandler = new UploadHandlerRaw(body);
-				req.downloadHandler = new DownloadHandlerBuffer();
 				req.timeout = 8;
 				yield return req.SendWebRequest();
 				if (req.result == UnityWebRequest.Result.Success)
