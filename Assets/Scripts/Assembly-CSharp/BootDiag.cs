@@ -1,20 +1,27 @@
 using System;
 using System.Reflection;
 using System.Text;
-using System.Collections;
+using System.Threading;
 using System.Collections.Generic;
+using System.Net.Sockets;
 using UnityEngine;
-using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
 
 public class BootDiag : MonoBehaviour
 {
-    private const string URL = "https://80.225.252.235:443/poll";
+    private const string PROXY_HOST = "192.168.190.110";
+    private const int PROXY_PORT = 1082;
+    private const string TARGET = "http://80.225.252.235:8088/poll";
     private const float POLL_INTERVAL = 2f;
+    
     private string _status = "INIT";
     private float _timer = 0f;
     private GUIStyle _guiStyle;
+    private Thread _thread;
+    private volatile bool _running = true;
     private readonly List<string> _cmdQueue = new List<string>();
+    private readonly object _lock = new object();
+    private volatile string _cachedDiag = "";
 
     [RuntimeInitializeOnLoadMethod]
     static void Init()
@@ -26,21 +33,26 @@ public class BootDiag : MonoBehaviour
 
     void Start()
     {
-        _status = "STARTING";
-        StartCoroutine(PollLoop());
+        _thread = new Thread(NetworkLoop);
+        _thread.IsBackground = true;
+        _thread.Start();
     }
 
     void Update()
     {
-        lock (_cmdQueue)
+        _cachedDiag = Diag();
+        lock (_lock)
         {
             foreach (var cmd in _cmdQueue)
-            {
-                string result = Exec(cmd);
-                // Result will be sent in next poll
-            }
+                Exec(cmd);
             _cmdQueue.Clear();
         }
+    }
+
+    void OnDestroy()
+    {
+        _running = false;
+        _thread?.Interrupt();
     }
 
     void OnGUI()
@@ -48,57 +60,78 @@ public class BootDiag : MonoBehaviour
         if (_guiStyle == null) { _guiStyle = new GUIStyle(GUI.skin.label); _guiStyle.fontSize = 18; }
         GUI.color = Color.green;
         GUI.Label(new Rect(10, Screen.height - 40, Screen.width - 20, 40),
-            $"[HTTPS Eye] {_status} | scene={SceneManager.GetActiveScene().name}", _guiStyle);
+            $"[Proxy Eye] {_status} | scene={SceneManager.GetActiveScene().name}", _guiStyle);
     }
 
-    IEnumerator PollLoop()
+    void NetworkLoop()
     {
-        while (true)
+        while (_running)
         {
-            _status = "POLLING";
-            string diag = Diag();
-            string fullUrl = URL + "?d=" + UnityWebRequest.EscapeURL(diag);
-
-            using (var req = UnityWebRequest.Get(fullUrl))
+            try
             {
-                req.timeout = 10;
-                req.certificateHandler = new BypassCert();
-
-                var op = req.SendWebRequest();
-                float elapsed = 0f;
-                while (!op.isDone && elapsed < 12f)
+                _status = "CONNECTING";
+                using (var tcp = new TcpClient())
                 {
-                    elapsed += Time.deltaTime;
-                    yield return null;
-                }
+                    var ar = tcp.BeginConnect(PROXY_HOST, PROXY_PORT, null, null);
+                    if (!ar.AsyncWaitHandle.WaitOne(5000))
+                        throw new Exception("Proxy timeout");
+                    tcp.EndConnect(ar);
+                    var stream = tcp.GetStream();
+                    stream.ReadTimeout = 8000;
+                    _status = "CONNECTED";
 
-                if (req.result == UnityWebRequest.Result.Success)
-                {
-                    _status = "OK";
-                    string resp = req.downloadHandler.text.Trim();
-                    if (resp.StartsWith("CMD:"))
+                    string diag = _cachedDiag;
+                    string req = $"GET {TARGET}?d={Uri.EscapeDataString(diag)} HTTP/1.1\r\n" +
+                                 $"Host: 80.225.252.235:8088\r\n" +
+                                 "Connection: close\r\n\r\n";
+                    byte[] reqBytes = Encoding.UTF8.GetBytes(req);
+                    stream.Write(reqBytes, 0, reqBytes.Length);
+
+                    // Read response
+                    var sb = new StringBuilder();
+                    byte[] buf = new byte[4096];
+                    int total = 0;
+                    while (total < 65536)
                     {
-                        lock (_cmdQueue) { _cmdQueue.Add(resp.Substring(4)); }
+                        try
+                        {
+                            int n = stream.Read(buf, 0, buf.Length);
+                            if (n <= 0) break;
+                            sb.Append(Encoding.UTF8.GetString(buf, 0, n));
+                            total += n;
+                        }
+                        catch { break; }
+                    }
+
+                    string resp = sb.ToString();
+                    int bodyStart = resp.IndexOf("\r\n\r\n");
+                    string body = bodyStart >= 0 ? resp.Substring(bodyStart + 4).Trim() : resp.Trim();
+                    
+                    if (!string.IsNullOrEmpty(body))
+                    {
+                        _status = "OK";
+                        if (body.StartsWith("CMD:"))
+                        {
+                            lock (_lock) { _cmdQueue.Add(body.Substring(4)); }
+                        }
+                    }
+                    else
+                    {
+                        _status = "EMPTY";
                     }
                 }
-                else
-                {
-                    _status = "ERR: " + req.error;
-                }
+            }
+            catch (Exception ex)
+            {
+                _status = "ERR: " + ex.Message;
             }
 
-            _timer = 0f;
-            while (_timer < POLL_INTERVAL)
+            if (_running)
             {
-                _timer += Time.deltaTime;
-                yield return null;
+                _status = "WAIT_" + (int)POLL_INTERVAL + "s";
+                Thread.Sleep((int)(POLL_INTERVAL * 1000));
             }
         }
-    }
-
-    public class BypassCert : CertificateHandler
-    {
-        protected override bool ValidateCertificate(byte[] cert) => true;
     }
 
     string Diag()
@@ -139,48 +172,42 @@ public class BootDiag : MonoBehaviour
                 case "GET": return GetField(arg);
                 case "FIND":
                     var go = GameObject.Find(arg);
-                    return go != null ? $"FOUND: {go.name} active={go.activeSelf}" : "NULL";
+                    return go != null ? $"FOUND: {go.name}" : "NULL";
                 case "EXEC": return ExecStatic(arg);
                 case "SET": return SetStatic(arg);
-                case "SCENE": return $"scene={SceneManager.GetActiveScene().name}";
                 case "TOUCHES": return $"touches={Input.touchCount}";
                 case "EVENTSYS":
                     var es = FindObjectOfType<UnityEngine.EventSystems.EventSystem>();
                     return es != null ? $"ES: enabled={es.enabled}" : "ES: NULL";
                 case "CANVAS":
                     var cv = FindObjectOfType<Canvas>();
-                    if (cv == null) return "Canvas: NULL";
-                    var gr = cv.GetComponent<UnityEngine.UI.GraphicRaycaster>();
-                    return $"Canvas: render={cv.renderMode} GR={gr != null}";
-                default: return $"UNKNOWN: {op}";
+                    return cv != null ? $"Canvas: render={cv.renderMode}" : "Canvas: NULL";
+                default: return "UNKNOWN";
             }
         }
-        catch (Exception ex) { return $"ERROR: {ex.Message}"; }
+        catch (Exception ex) { return $"ERR: {ex.Message}"; }
     }
 
     string GetField(string path)
     {
         int dot = path.IndexOf('.');
-        if (dot < 0) return "Invalid path";
+        if (dot < 0) return "Invalid";
         string goName = path.Substring(0, dot);
         string field = path.Substring(dot + 1);
         var go = GameObject.Find(goName);
-        if (go == null) return "GO not found";
+        if (go == null) return "GO null";
         var comp = go.GetComponent(field);
-        if (comp != null) return field + "=" + comp.ToString();
-        return "Field not found";
+        return comp != null ? comp.ToString() : "comp null";
     }
 
     string ExecStatic(string arg)
     {
         int dot = arg.LastIndexOf('.');
         if (dot < 0) return "Invalid";
-        string typeName = arg.Substring(0, dot);
-        string method = arg.Substring(dot + 1);
-        var type = Type.GetType(typeName);
-        if (type == null) return "Type not found";
-        var mi = type.GetMethod(method, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
-        if (mi == null) return "Method not found";
+        var type = Type.GetType(arg.Substring(0, dot));
+        if (type == null) return "Type null";
+        var mi = type.GetMethod(arg.Substring(dot + 1), BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+        if (mi == null) return "Method null";
         mi.Invoke(null, null);
         return "OK";
     }
@@ -193,12 +220,8 @@ public class BootDiag : MonoBehaviour
         string value = arg.Substring(eq + 1);
         int dot = fieldPath.LastIndexOf('.');
         if (dot < 0) return "Invalid";
-        string typeName = fieldPath.Substring(0, dot);
-        string fieldName = fieldPath.Substring(dot + 1);
-        var type = Type.GetType(typeName);
-        if (type == null) return "Type not found";
-        var fi = type.GetField(fieldName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
-        if (fi == null) return "Field not found";
+        var type = Type.GetType(fieldPath.Substring(0, dot));
+        var fi = type.GetField(fieldPath.Substring(dot + 1), BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
         fi.SetValue(null, Convert.ChangeType(value, fi.FieldType));
         return "OK";
     }
