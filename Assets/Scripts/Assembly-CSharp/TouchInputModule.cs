@@ -1,29 +1,41 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 using System.Collections.Generic;
 
 public class TouchInputModule : BaseInputModule
 {
 	public static string lastDiag = "INIT";
-	public static int hitStrategy = 0; // 0=RectContains 1=ScreenCorners 2=WorldCorners 3=GraphicRaycaster
-	
+	public static int hitStrategy = 2;
+	public static int touchDiag = 1;
+
 	private PointerEventData pointerData;
 	private List<RaycastResult> raycastResults = new List<RaycastResult>();
 	private int processCount = 0;
 	private int touchCount = 0;
+	private int frameCount = 0;
 	private int rayCount = 0;
 	private string lastHit = "";
 	private string lastTouchPos = "";
 	private string stratInfo = "";
+	private string touchPhase = "";
 
 	public override void Process()
 	{
 		processCount++;
-		if (Input.touchCount <= 0) return;
-		touchCount = Input.touchCount;
+		frameCount++;
 
+		if (Input.touchCount <= 0)
+		{
+			if (touchDiag >= 2 && frameCount % 120 == 0)
+				lastDiag = $"TIM:{processCount} TOUCH:0 (idle)";
+			return;
+		}
+
+		touchCount = Input.touchCount;
 		var touch = Input.GetTouch(0);
 		lastTouchPos = $"{touch.position.x:F0},{touch.position.y:F0}";
+		touchPhase = touch.phase.ToString();
 
 		if (pointerData == null)
 			pointerData = new PointerEventData(eventSystem);
@@ -36,61 +48,65 @@ public class TouchInputModule : BaseInputModule
 		if (canvas != null)
 		{
 			var buttons = canvas.GetComponentsInChildren<Button>();
-			if (hitStrategy == 0)
-				HitTest_RectContains(buttons, touch, canvas);
-			else if (hitStrategy == 1)
-				HitTest_ScreenCorners(buttons, touch, canvas);
-			else if (hitStrategy == 2)
-				HitTest_WorldCorners(buttons, touch);
-			else if (hitStrategy == 3)
-				HitTest_GraphicRaycaster(buttons, touch, canvas);
+			switch (hitStrategy)
+			{
+				case 0: HitTest_RectContains(buttons, touch, canvas); break;
+				case 1: HitTest_ScreenCorners(buttons, touch, canvas); break;
+				case 2: HitTest_WorldCorners(buttons, touch); break;
+				case 3: HitTest_GraphicRaycaster(buttons, touch, canvas); break;
+			}
 			rayCount = raycastResults.Count;
 		}
 		else
 		{
 			rayCount = -1;
+			stratInfo = "NoCanvas";
 		}
 
 		if (raycastResults.Count > 0)
-			lastHit = $"{raycastResults[0].gameObject.name}";
-		else
-			lastHit = "NONE";
-
-		var firstTarget = raycastResults.Count > 0 ? raycastResults[0] : default(RaycastResult);
-
-		if (touch.phase == TouchPhase.Began)
 		{
-			pointerData.pointerPressRaycast = firstTarget;
-			var handler = ExecuteEvents.GetEventHandler<IPointerDownHandler>(firstTarget.gameObject);
-			if (handler != null)
+			lastHit = raycastResults[0].gameObject.name;
+			var firstTarget = raycastResults[0];
+
+			if (touch.phase == TouchPhase.Began)
 			{
-				ExecuteEvents.Execute(handler, pointerData, ExecuteEvents.pointerDownHandler);
-				pointerData.pointerPress = handler;
+				pointerData.pointerPressRaycast = firstTarget;
+				var handler = ExecuteEvents.GetEventHandler<IPointerDownHandler>(firstTarget.gameObject);
+				if (handler != null)
+				{
+					ExecuteEvents.Execute(handler, pointerData, ExecuteEvents.pointerDownHandler);
+					pointerData.pointerPress = handler;
+				}
 			}
-		}
-		else if (touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled)
-		{
-			if (pointerData.pointerPress != null)
+			else if (touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled)
 			{
-				ExecuteEvents.Execute(pointerData.pointerPress, pointerData, ExecuteEvents.pointerUpHandler);
-				ExecuteEvents.Execute(pointerData.pointerPress, pointerData, ExecuteEvents.pointerClickHandler);
-			}
-			pointerData.pointerPress = null;
-		}
-		else if (touch.phase == TouchPhase.Moved || touch.phase == TouchPhase.Stationary)
-		{
-			var newHandler = (firstTarget.gameObject != null)
-				? ExecuteEvents.GetEventHandler<IPointerDownHandler>(firstTarget.gameObject)
-				: null;
-
-			if (pointerData.pointerPress != null && newHandler != pointerData.pointerPress)
-			{
-				ExecuteEvents.Execute(pointerData.pointerPress, pointerData, ExecuteEvents.pointerExitHandler);
+				if (pointerData.pointerPress != null)
+				{
+					ExecuteEvents.Execute(pointerData.pointerPress, pointerData, ExecuteEvents.pointerUpHandler);
+					ExecuteEvents.Execute(pointerData.pointerPress, pointerData, ExecuteEvents.pointerClickHandler);
+				}
 				pointerData.pointerPress = null;
 			}
+			else if (touch.phase == TouchPhase.Moved || touch.phase == TouchPhase.Stationary)
+			{
+				var newHandler = (firstTarget.gameObject != null)
+					? ExecuteEvents.GetEventHandler<IPointerDownHandler>(firstTarget.gameObject)
+					: null;
+				if (pointerData.pointerPress != null && newHandler != pointerData.pointerPress)
+				{
+					ExecuteEvents.Execute(pointerData.pointerPress, pointerData, ExecuteEvents.pointerExitHandler);
+					pointerData.pointerPress = null;
+				}
+			}
+		}
+		else
+		{
+			lastHit = "NONE";
 		}
 
-		lastDiag = GetDiag();
+		// Report at configured frequency
+		if (touchDiag >= 1 && frameCount % GlobalCmd.diagFreq == 0)
+			lastDiag = GetFullDiag();
 	}
 
 	void HitTest_RectContains(Button[] buttons, Touch touch, Canvas canvas)
@@ -100,17 +116,11 @@ public class TouchInputModule : BaseInputModule
 		{
 			var rt = btn.transform as RectTransform;
 			if (rt == null) continue;
-			Vector2 localPoint;
-			if (RectTransformUtility.ScreenPointToLocalPointInRectangle(rt, touch.position, canvas.worldCamera, out localPoint))
+			Vector2 lp;
+			if (RectTransformUtility.ScreenPointToLocalPointInRectangle(rt, touch.position, canvas.worldCamera, out lp))
 			{
-				if (rt.rect.Contains(localPoint))
-				{
-					var rr = new RaycastResult();
-					rr.gameObject = btn.gameObject;
-					rr.module = null;
-					raycastResults.Add(rr);
-					return;
-				}
+				if (rt.rect.Contains(lp))
+				{ AddHit(btn); return; }
 			}
 		}
 	}
@@ -123,13 +133,7 @@ public class TouchInputModule : BaseInputModule
 			var rt = btn.transform as RectTransform;
 			if (rt == null) continue;
 			if (RectTransformUtility.RectangleContainsScreenPoint(rt, touch.position, canvas.worldCamera))
-			{
-				var rr = new RaycastResult();
-				rr.gameObject = btn.gameObject;
-				rr.module = null;
-				raycastResults.Add(rr);
-				return;
-			}
+			{ AddHit(btn); return; }
 		}
 	}
 
@@ -140,62 +144,79 @@ public class TouchInputModule : BaseInputModule
 		{
 			var rt = btn.transform as RectTransform;
 			if (rt == null) continue;
-			Vector3[] corners = new Vector3[4];
-			rt.GetWorldCorners(corners);
-			// World corners are in world space. For Screen Space - Camera canvas,
-			// world space IS screen pixel space (assuming camera at z=0, ortho).
-			float xMin = corners[0].x, yMin = corners[0].y;
-			float xMax = corners[2].x, yMax = corners[2].y;
-			if (touch.position.x >= xMin && touch.position.x <= xMax &&
-			    touch.position.y >= yMin && touch.position.y <= yMax)
-			{
-				var rr = new RaycastResult();
-				rr.gameObject = btn.gameObject;
-				rr.module = null;
-				raycastResults.Add(rr);
-				return;
-			}
+			Vector3[] c = new Vector3[4];
+			rt.GetWorldCorners(c);
+			if (touch.position.x >= c[0].x && touch.position.x <= c[2].x &&
+			    touch.position.y >= c[0].y && touch.position.y <= c[2].y)
+			{ AddHit(btn); return; }
 		}
 	}
 
 	void HitTest_GraphicRaycaster(Button[] buttons, Touch touch, Canvas canvas)
 	{
-		stratInfo = "GraphicRaycaster";
 		var raycaster = canvas.GetComponent<GraphicRaycaster>();
-		if (raycaster == null) { stratInfo = "GraphicRaycaster(NULL)"; return; }
-		
-		var eventSystem = EventSystem.current;
-		if (eventSystem == null) { stratInfo = "GraphicRaycaster(ES_NULL)"; return; }
-		
-		var ped = new PointerEventData(eventSystem);
+		if (raycaster == null) { stratInfo = "GR(NULL)"; return; }
+		var es = EventSystem.current;
+		if (es == null) { stratInfo = "GR(ES=NULL)"; return; }
+		stratInfo = "GR";
+		var ped = new PointerEventData(es);
 		ped.position = touch.position;
 		var results = new List<RaycastResult>();
 		raycaster.Raycast(ped, results);
 		if (results.Count > 0)
-		{
 			raycastResults.Add(results[0]);
-		}
 	}
 
-	public string GetDiag()
+	void AddHit(Button btn)
 	{
-		var canvas = GameObject.FindObjectOfType<Canvas>();
+		var rr = new RaycastResult();
+		rr.gameObject = btn.gameObject;
+		rr.module = null;
+		raycastResults.Add(rr);
+	}
+
+	public static string GetFullDiag()
+	{
+		var inst = FindObjectOfType<TouchInputModule>();
+		if (inst == null) return "TIM:NULL";
+
+		var canvas = FindObjectOfType<Canvas>();
 		var buttons = canvas != null ? canvas.GetComponentsInChildren<Button>() : null;
-		int bCnt = buttons != null ? buttons.Length : -1;
+		int bCnt = buttons != null ? buttons.Length : 0;
+
 		var sb = new System.Text.StringBuilder();
-		sb.Append($"timProc={processCount} timTouch={touchCount} timRay={rayCount} timHit={lastHit} timPos={lastTouchPos} strat={hitStrategy}:{stratInfo} bCnt={bCnt}");
-		if (buttons != null && buttons.Length > 0)
+		sb.Append($"T:{inst.processCount} tc={inst.touchCount} strat={inst.hitStrategy}:{inst.stratInfo}");
+		sb.Append($" hit={inst.lastHit} ray={inst.rayCount}");
+		sb.Append($" pos=({inst.lastTouchPos}) ph={inst.touchPhase}");
+
+		if (canvas != null)
 		{
-			// Show first3 button world corners
-			for (int i = 0; i < buttons.Length && i < 3; i++)
+			var scaler = canvas.GetComponent<CanvasScaler>();
+			if (scaler != null)
+				sb.Append($" sclM={scaler.matchWidthOrHeight:F3} sclR=({scaler.referenceResolution.x:F0},{scaler.referenceResolution.y:F0})");
+			sb.Append($" camSz={canvas.worldCamera?.orthographicSize:F1}");
+			var gr = canvas.GetComponent<GraphicRaycaster>();
+			sb.Append($" gr={(gr!=null?"OK":"NULL")}");
+		}
+		else sb.Append(" cnv=NULL");
+
+		sb.Append($" btn={bCnt}");
+
+		if (buttons != null && bCnt > 0)
+		{
+			for (int i = 0; i < bCnt && i < 6; i++)
 			{
 				var rt = buttons[i].transform as RectTransform;
 				if (rt == null) continue;
-				Vector3[] corners = new Vector3[4];
-				rt.GetWorldCorners(corners);
-				sb.Append($" btn{i}={buttons[i].name}({corners[0].x:F0},{corners[0].y:F0})-({corners[2].x:F0},{corners[2].y:F0})");
+				Vector3[] c = new Vector3[4];
+				rt.GetWorldCorners(c);
+				var img = buttons[i].GetComponent<Image>();
+				float a = img != null ? img.color.a : -1;
+				bool rc = img != null && img.raycastTarget;
+				sb.Append($" [{buttons[i].name}] rc={rc} a={a:F2} W=({c[0].x:F0},{c[0].y:F0})-({c[2].x:F0},{c[2].y:F0})");
 			}
 		}
+
 		return sb.ToString();
 	}
 }
