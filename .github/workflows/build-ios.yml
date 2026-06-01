@@ -2,11 +2,9 @@ name: Build iOS
 
 on:
   workflow_dispatch:
-    inputs:
-      dummy:
-        description: "dummy"
-        required: false
-        default: "go"
+  push:
+    branches:
+      - 'trigger-*'
 
 jobs:
   build-ios:
@@ -15,9 +13,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Delete old workflow file
-        run: rm -f .github/workflows/ios-build.yml
 
       - name: Build Unity (Xcode project)
         uses: game-ci/unity-builder@v4
