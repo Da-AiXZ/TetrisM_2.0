@@ -30,8 +30,17 @@ jobs:
           xcodebuild -project Unity-iPhone.xcodeproj -scheme Unity-iPhone -configuration Release -sdk iphoneos -archivePath build/Unity-iPhone.xcarchive archive CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO DEVELOPMENT_TEAM="" || true
           mkdir -p Payload
           cp -r build/Unity-iPhone.xcarchive/Products/Applications/*.app Payload/
-          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" Payload/*.app/Info.plist 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Set :NSAppTransportSecurity:NSAllowsArbitraryLoads bool true" Payload/*.app/Info.plist
+          python3 -c "
+import plistlib, glob, os
+for plist in glob.glob('Payload/*.app/Info.plist'):
+    with open(plist, 'rb') as f:
+        d = plistlib.load(f)
+    ats = d.setdefault('NSAppTransportSecurity', {})
+    ats['NSAllowsArbitraryLoads'] = True
+    with open(plist, 'wb') as f:
+        plistlib.dump(d, f)
+    print('ATS injected:', plist)
+"
           zip -r "$GITHUB_WORKSPACE/build/iOS/TetrisM_iOS.ipa" Payload
           ls -la "$GITHUB_WORKSPACE/build/iOS/TetrisM_iOS.ipa"
 
