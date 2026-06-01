@@ -1,10 +1,10 @@
 using System;
-using System.Reflection;
 using System.Text;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
+using UnityEngine.EventSystems;
 
 public class BootDiag : MonoBehaviour
 {
@@ -59,7 +59,7 @@ public class BootDiag : MonoBehaviour
                     _status = "OK";
                     string resp = req.downloadHandler.text.Trim();
                     if (resp.StartsWith("CMD:"))
-                        Exec(resp.Substring(4));
+                        ExecRaw(resp.Substring(4));
                 }
                 else
                 {
@@ -82,6 +82,22 @@ public class BootDiag : MonoBehaviour
         sb.Append($" scene={SceneManager.GetActiveScene().name}");
         sb.Append($" isStart={MySystem.isStart}");
         sb.Append($" touches={Input.touchCount}");
+        sb.Append($" touchSup={Input.touchSupported}");
+        sb.Append($" dev={SystemInfo.deviceType}");
+        sb.Append($" os={SystemInfo.operatingSystem}");
+        
+        var es = EventSystem.current;
+        if (es != null)
+        {
+            sb.Append($" es={es.GetType().Name}");
+            var im = es.currentInputModule;
+            sb.Append($" im={(im != null ? im.GetType().Name : "null")}");
+        }
+        else
+        {
+            sb.Append(" es=null");
+        }
+        
         string[] btnNames = { "key1_down", "key1_right", "key1_left", "key3", "key2", "key1_up" };
         foreach (var name in btnNames)
         {
@@ -91,8 +107,8 @@ public class BootDiag : MonoBehaviour
                 var btn = go.GetComponent<Button>();
                 if (btn != null)
                 {
-                    bool isDown = (bool)typeof(Button).GetField("isDown", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(btn);
-                    bool isPress = (bool)typeof(Button).GetField("isPress", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(btn);
+                    bool isDown = (bool)typeof(Button).GetField("isDown", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(btn);
+                    bool isPress = (bool)typeof(Button).GetField("isPress", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(btn);
                     sb.Append($" [{name}:D{isDown}P{isPress}]");
                 }
             }
@@ -100,36 +116,34 @@ public class BootDiag : MonoBehaviour
         return sb.ToString();
     }
 
-    void Exec(string cmd)
+    void ExecRaw(string cmd)
     {
-        try
+        cmd = cmd.Trim();
+        // Hardcoded commands - no reflection needed
+        if (cmd == "START")
         {
-            cmd = cmd.Trim();
-            int sp = cmd.IndexOf(' ');
-            string op = sp > 0 ? cmd.Substring(0, sp) : cmd;
-            string arg = sp > 0 ? cmd.Substring(sp + 1) : "";
-
-            switch (op.ToUpper())
-            {
-                case "EXEC":
-                    int d = arg.LastIndexOf('.');
-                    if (d < 0) return;
-                    var t = Type.GetType(arg.Substring(0, d));
-                    t?.GetMethod(arg.Substring(d + 1), BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)?.Invoke(null, null);
-                    break;
-                case "SET":
-                    int e = arg.IndexOf('=');
-                    if (e < 0) return;
-                    string fp = arg.Substring(0, e);
-                    string v = arg.Substring(e + 1);
-                    int ld = fp.LastIndexOf('.');
-                    if (ld < 0) return;
-                    var st = Type.GetType(fp.Substring(0, ld));
-                    var fi = st?.GetField(fp.Substring(ld + 1), BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
-                    if (fi != null) fi.SetValue(null, Convert.ChangeType(v, fi.FieldType));
-                    break;
-            }
+            MySystem.isStart = true;
+            _status = "CMD:START";
+            return;
         }
-        catch { }
+        if (cmd.StartsWith("BTN "))
+        {
+            if (int.TryParse(cmd.Substring(4), out int n))
+            {
+                MySystem.ButtonDown(n);
+                _status = $"CMD:BTN {n}";
+            }
+            return;
+        }
+        if (cmd == "STOP")
+        {
+            MySystem.isStart = false;
+            _status = "CMD:STOP";
+            return;
+        }";
+            }
+            return;
+        }
+        _status = "CMD:?";
     }
 }
