@@ -5,6 +5,14 @@ using UnityEngine.Events;
 public class Button : MonoBehaviour, IPointerClickHandler, IEventSystemHandler, IPointerDownHandler, IPointerUpHandler, IPointerExitHandler
 {
 	public float pressDurationTime = 1f;
+	private UnityEngine.UI.Image _image;
+	private Color _originalColor;
+
+	private void Awake()
+	{
+		_image = GetComponent<UnityEngine.UI.Image>();
+		if (_image != null) _originalColor = _image.color;
+	}
 
 	public bool responseOnceByPress;
 
@@ -65,17 +73,20 @@ public class Button : MonoBehaviour, IPointerClickHandler, IEventSystemHandler, 
 	{
 		isDown = true;
 		downTime = 0f;
+		if (_image != null) _image.color = _originalColor * 0.6f;
 	}
 
 	public void OnPointerUp(PointerEventData eventData)
 	{
 		isDown = false;
+		if (_image != null) _image.color = _originalColor;
 	}
 
 	public void OnPointerExit(PointerEventData eventData)
 	{
 		isDown = false;
 		isPress = false;
+		if (_image != null) _image.color = _originalColor;
 	}
 
 	public void OnPointerClick(PointerEventData eventData)
