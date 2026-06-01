@@ -99,7 +99,21 @@ public class TouchInputModule : BaseInputModule
 	public string GetDiag()
 	{
 		var canvas = GameObject.FindObjectOfType<Canvas>();
-		int bCnt = canvas != null ? canvas.GetComponentsInChildren<Button>().Length : -1;
-		return $"timProc={processCount} timTouch={touchCount} timRay={rayCount} timHit={lastHit} timPos={lastTouchPos} bCnt={bCnt}";
+		var buttons = canvas != null ? canvas.GetComponentsInChildren<Button>() : null;
+		int bCnt = buttons != null ? buttons.Length : -1;
+		var sb = new System.Text.StringBuilder();
+		sb.Append($"timProc={processCount} timTouch={touchCount} timRay={rayCount} timHit={lastHit} timPos={lastTouchPos} bCnt={bCnt}");
+		if (buttons != null)
+		{
+			for (int i = 0; i < buttons.Length && i < 8; i++)
+			{
+				var rt = buttons[i].transform as RectTransform;
+				if (rt == null) continue;
+				Vector3[] corners = new Vector3[4];
+				rt.GetWorldCorners(corners);
+				sb.Append($" btn{i}={buttons[i].name}({corners[0].x:F0},{corners[0].y:F0})-({corners[2].x:F0},{corners[2].y:F0})");
+			}
+		}
+		return sb.ToString();
 	}
 }
