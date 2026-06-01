@@ -615,6 +615,18 @@ public class MySystem : MonoBehaviour
 		lavaKids = Resources.Load("lavaKids") as GameObject;
 		types = new bool[7] { true, true, true, true, true, true, true };
 		BlocksSprite = Resources.LoadAll<Sprite>("Blocks");
+		// AssetRipper fallback: sprite sheet metadata empty, load individual assets
+		if (BlocksSprite == null || BlocksSprite.Length == 0)
+		{
+			var ids = new int[] {15,16,17,18,19,20,21,22,23,24,25,26,27,42,43,44,45,46,47,49,50,51,53,54,55,70,71,72,73,74,75,76,77,78,79,80,81,82,83,98,99,100,101,102,103,104,105,106,107,108,109,110,111};
+			int max = 112;
+			for (int i = 0; i < ids.Length; i++) { if (ids[i] > max) max = ids[i]; }
+			BlocksSprite = new Sprite[max + 1];
+			for (int i = 0; i < ids.Length; i++)
+			{
+				BlocksSprite[ids[i]] = Resources.Load<Sprite>("Blocks_" + ids[i]);
+			}
+		}
 		string text = RFileS("/Score", "/BestScore.cup", 1024);
 		buttonDownb = new int[3];
 		buttonDown = new int[3];

@@ -104,13 +104,23 @@ public class BootDiag : MonoBehaviour
         if (cam != null)
             sb.Append($" camSz={cam.orthographicSize:F1} camPos=({cam.transform.position.x:F1},{cam.transform.position.y:F1})");
         
-        // Score text
-        var st = GameObject.Find("ScoreText");
-        sb.Append($" st={(st != null ? "OK" : "NULL")}");
-        if (st != null) sb.Append($" stAct={st.activeSelf}");
+        // Score display objects (Score component looks for "Score" and "Best" Text)
+        var scGo = GameObject.Find("Score");
+        var scTxt = (scGo != null) ? scGo.GetComponent<UnityEngine.UI.Text>() : null;
+        sb.Append($" scGo={(scGo != null ? "OK" : "NULL")}");
+        if (scTxt != null) sb.Append($" scTxt=OK scTxtAct={scGo.activeSelf} scTxtEn={scTxt.enabled}");
         
-        var ht = GameObject.Find("HighScoreText");
-        sb.Append($" ht={(ht != null ? "OK" : "NULL")}");
+        var bestGo = GameObject.Find("Best");
+        sb.Append($" bestGo={(bestGo != null ? "OK" : "NULL")}");
+        
+        // Check FallDown_2 sprite
+        var fd2s = GameObject.FindObjectsOfType<FallDown_2>();
+        if (fd2s.Length > 0)
+        {
+            var fd2 = fd2s[0];
+            sb.Append($" fd2Sr={(fd2.spriteR != null ? "OK" : "NULL")}");
+            if (fd2.spriteR != null) sb.Append($" fd2Spr={(fd2.spriteR.sprite != null ? "OK" : "NULL")}");
+        }
         
         return sb.ToString();
     }
@@ -118,7 +128,7 @@ public class BootDiag : MonoBehaviour
     void ExecRaw(string cmd)
     {
         cmd = cmd.Trim();
-        if (cmd == "START") { MySystem.isStart = true; _status = "CMD:START"; return; }
+        if (cmd == "START") { MySystem.isStart = false; MySystem.buttonDown[2] = 0; MySystem.ButtonDown(6); _status = "CMD:START"; return; }
         if (cmd == "STOP") { MySystem.isStart = false; MySystem.buttonDown[2] = 0; _status = "CMD:STOP"; return; }
         if (cmd.StartsWith("BTN ")) { if (int.TryParse(cmd.Substring(4), out int n)) { MySystem.ButtonDown(n); _status = $"CMD:BTN{n}"; } return; }
         _status = "CMD:?";
