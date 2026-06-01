@@ -83,64 +83,27 @@ public class BootDiag : MonoBehaviour
         sb.Append($" isStart={MySystem.isStart}");
         sb.Append($" touches={Input.touchCount}");
         sb.Append($" touchSup={Input.touchSupported}");
-        sb.Append($" dev={SystemInfo.deviceType}");
-        sb.Append($" os={SystemInfo.operatingSystem}");
+        sb.Append($" im={((EventSystem.current != null && EventSystem.current.currentInputModule != null) ? EventSystem.current.currentInputModule.GetType().Name : "null")}");
+        sb.Append($" b0={MySystem.buttonDown[0]} b1={MySystem.buttonDown[1]} b2={MySystem.buttonDown[2]}");
+        sb.Append($" score={MySystem.score}");
+        sb.Append($" gameOver={MySystem.gameOver}");
         
-        var es = EventSystem.current;
-        if (es != null)
-        {
-            sb.Append($" es={es.GetType().Name}");
-            var im = es.currentInputModule;
-            sb.Append($" im={(im != null ? im.GetType().Name : "null")}");
-        }
-        else
-        {
-            sb.Append(" es=null");
-        }
+        var fd = Resources.Load("FallDowns");
+        sb.Append($" fdRes={(fd != null ? "OK" : "NULL")}");
+        var show = GameObject.Find("Showing");
+        sb.Append($" show={(show != null ? "OK" : "NULL")}");
+        var startGo = GameObject.Find("Canvas")?.transform.Find("start")?.gameObject;
+        sb.Append($" startGo={(startGo != null ? startGo.activeSelf.ToString() : "NULL")}");
         
-        string[] btnNames = { "key1_down", "key1_right", "key1_left", "key3", "key2", "key1_up" };
-        foreach (var name in btnNames)
-        {
-            var go = GameObject.Find(name);
-            if (go != null)
-            {
-                var btn = go.GetComponent<Button>();
-                if (btn != null)
-                {
-                    bool isDown = (bool)typeof(Button).GetField("isDown", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(btn);
-                    bool isPress = (bool)typeof(Button).GetField("isPress", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(btn);
-                    sb.Append($" [{name}:D{isDown}P{isPress}]");
-                }
-            }
-        }
         return sb.ToString();
     }
 
     void ExecRaw(string cmd)
     {
         cmd = cmd.Trim();
-        // Hardcoded commands - no reflection needed
-        if (cmd == "START")
-        {
-            MySystem.isStart = true;
-            _status = "CMD:START";
-            return;
-        }
-        if (cmd.StartsWith("BTN "))
-        {
-            if (int.TryParse(cmd.Substring(4), out int n))
-            {
-                MySystem.ButtonDown(n);
-                _status = $"CMD:BTN {n}";
-            }
-            return;
-        }
-        if (cmd == "STOP")
-        {
-            MySystem.isStart = false;
-            _status = "CMD:STOP";
-            return;
-        }
+        if (cmd == "START") { MySystem.isStart = true; _status = "CMD:START"; return; }
+        if (cmd == "STOP") { MySystem.isStart = false; MySystem.buttonDown[2] = 0; _status = "CMD:STOP"; return; }
+        if (cmd.StartsWith("BTN ")) { if (int.TryParse(cmd.Substring(4), out int n)) { MySystem.ButtonDown(n); _status = $"CMD:BTN{n}"; } return; }
         _status = "CMD:?";
     }
 }
