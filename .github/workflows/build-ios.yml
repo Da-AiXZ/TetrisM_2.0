@@ -1,9 +1,6 @@
 name: Build iOS
 
-on:
-  push:
-    branches:
-      - 'trigger-*'
+on: push
 
 jobs:
   build-ios:
