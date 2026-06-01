@@ -118,14 +118,22 @@ public class BootDiag : MonoBehaviour
         int bsNonNull =0;
         if (MySystem.BlocksSprite != null) { for (int i =0; i < MySystem.BlocksSprite.Length; i++) if (MySystem.BlocksSprite[i] != null) bsNonNull++; }
         sb.Append($" bsLen={bsLen} bsOk={bsNonNull}");
+        // Sample first few sprite names
+        if (MySystem.BlocksSprite != null) {
+            string sn(int i) => (i < MySystem.BlocksSprite.Length && MySystem.BlocksSprite[i] != null) ? MySystem.BlocksSprite[i].name : "NULL";
+            sb.Append($" sp[0]={sn(0)} sp[1]={sn(1)} sp[15]={sn(15)} sp[52]={sn(52)}");
+        }
         
-        // Check FallDown_2 sprite
+        // Check all FallDown_2 sprites
         var fd2s = GameObject.FindObjectsOfType<FallDown_2>();
-        if (fd2s.Length > 0)
+        sb.Append($" fd2Cnt={fd2s.Length}");
+        for (int j =0; j < System.Math.Min(fd2s.Length,4); j++)
         {
-            var fd2 = fd2s[0];
-            sb.Append($" fd2Sr={(fd2.spriteR != null ? "OK" : "NULL")}");
-            if (fd2.spriteR != null) sb.Append($" fd2Spr={(fd2.spriteR.sprite != null ? "OK" : "NULL")} fd2Id={fd2.id}");
+            var fd2 = fd2s[j];
+            string spName = "?";
+            if (fd2.spriteR != null && fd2.spriteR.sprite != null)
+                spName = fd2.spriteR.sprite.name;
+            sb.Append($" [fd2_{j}:id={fd2.id} sp={spName}]");
         }
         
         return sb.ToString();
