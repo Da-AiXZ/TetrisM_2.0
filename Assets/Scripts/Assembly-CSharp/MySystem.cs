@@ -313,8 +313,45 @@ public class MySystem : MonoBehaviour
 			if (standalone != null) standalone.enabled = false;
 			es.gameObject.AddComponent<TouchInputModule>();
 		}
-		// Fix broken button layout from AssetRipper
-		gameObject.AddComponent<UIFixer>();
+		// Fix broken button layout from AssetRipper (inlined for IL2CPP reliability)
+		var uiCanvas = UnityEngine.Object.FindObjectOfType<Canvas>();
+		if (uiCanvas != null)
+		{
+			var uiButtons = uiCanvas.GetComponentsInChildren<Button>(true);
+			Debug.Log($"[UIFix] Found {uiButtons.Length} buttons");
+			foreach (var btn in uiButtons)
+			{
+				var rt = btn.transform as RectTransform;
+				if (rt == null) continue;
+				var img = btn.GetComponent<UnityEngine.UI.Image>();
+				if (img == null)
+				{
+					img = btn.gameObject.AddComponent<UnityEngine.UI.Image>();
+					img.color = new UnityEngine.Color(1, 0, 0, 0.5f);
+				}
+				img.raycastTarget = true;
+				rt.anchorMin = Vector2.zero;
+				rt.anchorMax = Vector2.one;
+				rt.pivot = new Vector2(0.5f, 0.5f);
+				string name = btn.name.ToLower();
+				if (name.Contains("key1") && name.Contains("down"))
+				{ rt.anchorMin = new Vector2(0.3f, 0.05f); rt.anchorMax = new Vector2(0.7f, 0.25f); }
+				else if (name.Contains("key1") && name.Contains("left"))
+				{ rt.anchorMin = new Vector2(0.05f, 0.15f); rt.anchorMax = new Vector2(0.22f, 0.35f); }
+				else if (name.Contains("key1") && name.Contains("right"))
+				{ rt.anchorMin = new Vector2(0.24f, 0.15f); rt.anchorMax = new Vector2(0.41f, 0.35f); }
+				else if (name.Contains("key1") && name.Contains("up"))
+				{ rt.anchorMin = new Vector2(0.145f, 0.36f); rt.anchorMax = new Vector2(0.315f, 0.56f); }
+				else if (name.Contains("key2"))
+				{ rt.anchorMin = new Vector2(0.75f, 0.10f); rt.anchorMax = new Vector2(0.95f, 0.35f); }
+				else if (name.Contains("key3"))
+				{ rt.anchorMin = new Vector2(0.55f, 0.10f); rt.anchorMax = new Vector2(0.73f, 0.35f); }
+				rt.offsetMin = Vector2.zero;
+				rt.offsetMax = Vector2.zero;
+			}
+			UnityEngine.UI.Canvas.ForceUpdateCanvases();
+			Debug.Log($"[UIFix] Done — {uiButtons.Length} buttons fixed");
+		}
 	}
 
 	private void StartRepl()
