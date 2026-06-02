@@ -25,6 +25,49 @@ public class TouchInputModule : BaseInputModule
 		processCount++;
 		frameCount++;
 
+		// One-time button fix on first frame
+		if (processCount == 1)
+		{
+			var fixCanvas = FindObjectOfType<Canvas>();
+			if (fixCanvas != null)
+			{
+				var fixBtns = fixCanvas.GetComponentsInChildren<Button>(true);
+				Debug.Log($"[UIFix] Process frame1 — found {fixBtns.Length} buttons");
+				foreach (var btn in fixBtns)
+				{
+					var rt = btn.transform as RectTransform;
+					if (rt == null) continue;
+					var img = btn.GetComponent<UnityEngine.UI.Image>();
+					if (img == null)
+					{
+						img = btn.gameObject.AddComponent<UnityEngine.UI.Image>();
+						img.color = new Color(1, 0, 0, 0.5f);
+					}
+					img.raycastTarget = true;
+					rt.anchorMin = Vector2.zero;
+					rt.anchorMax = Vector2.one;
+					rt.pivot = new Vector2(0.5f, 0.5f);
+					string n = btn.name.ToLower();
+					if (n.Contains("key1") && n.Contains("down"))
+					{ rt.anchorMin = new Vector2(0.3f, 0.05f); rt.anchorMax = new Vector2(0.7f, 0.25f); }
+					else if (n.Contains("key1") && n.Contains("left"))
+					{ rt.anchorMin = new Vector2(0.05f, 0.15f); rt.anchorMax = new Vector2(0.22f, 0.35f); }
+					else if (n.Contains("key1") && n.Contains("right"))
+					{ rt.anchorMin = new Vector2(0.24f, 0.15f); rt.anchorMax = new Vector2(0.41f, 0.35f); }
+					else if (n.Contains("key1") && n.Contains("up"))
+					{ rt.anchorMin = new Vector2(0.145f, 0.36f); rt.anchorMax = new Vector2(0.315f, 0.56f); }
+					else if (n.Contains("key2"))
+					{ rt.anchorMin = new Vector2(0.75f, 0.10f); rt.anchorMax = new Vector2(0.95f, 0.35f); }
+					else if (n.Contains("key3"))
+					{ rt.anchorMin = new Vector2(0.55f, 0.10f); rt.anchorMax = new Vector2(0.73f, 0.35f); }
+					rt.offsetMin = Vector2.zero;
+					rt.offsetMax = Vector2.zero;
+				}
+				Canvas.ForceUpdateCanvases();
+				Debug.Log($"[UIFix] Done — {fixBtns.Length} buttons");
+			}
+		}
+
 		if (Input.touchCount <= 0)
 		{
 			if (touchDiag >= 2 && frameCount % 120 == 0)
