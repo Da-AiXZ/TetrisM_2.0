@@ -349,7 +349,7 @@ public class MySystem : MonoBehaviour
 				rt.offsetMin = Vector2.zero;
 				rt.offsetMax = Vector2.zero;
 			}
-			UnityEngine.UI.Canvas.ForceUpdateCanvases();
+			UnityEngine.Canvas.ForceUpdateCanvases();
 			Debug.Log($"[UIFix] Done — {uiButtons.Length} buttons fixed");
 		}
 	}
