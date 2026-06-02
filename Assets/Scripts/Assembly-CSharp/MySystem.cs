@@ -313,6 +313,8 @@ public class MySystem : MonoBehaviour
 			if (standalone != null) standalone.enabled = false;
 			es.gameObject.AddComponent<TouchInputModule>();
 		}
+		// Fix broken button layout from AssetRipper
+		gameObject.AddComponent<UIFixer>();
 	}
 
 	private void StartRepl()
