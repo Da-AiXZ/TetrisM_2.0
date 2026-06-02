@@ -6,13 +6,14 @@ public class UIFixer : MonoBehaviour
 {
 	void Start()
 	{
-		Invoke("Fix", 0.5f);
+		Fix();
 	}
 
 	void Fix()
 	{
+		Debug.Log("[UIFixer] Fix() called");
 		var canvas = GameObject.FindObjectOfType<Canvas>();
-		if (canvas == null) return;
+		if (canvas == null) { Debug.Log("[UIFixer] no Canvas found"); return; }
 
 		var buttons = canvas.GetComponentsInChildren<Button>(true);
 		foreach (var btn in buttons)
@@ -25,7 +26,7 @@ public class UIFixer : MonoBehaviour
 			if (img == null)
 			{
 				img = btn.gameObject.AddComponent<Image>();
-				img.color = new Color(1, 1, 1, 0.3f); // semi-transparent for debugging
+				img.color = new Color(1, 0, 0, 0.5f); // red semi-transparent for debugging
 			}
 			img.raycastTarget = true;
 
